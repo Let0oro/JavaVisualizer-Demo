@@ -87,10 +87,11 @@ export const App: React.FC = () => {
 
   const handleExecute = useCallback(async () => {
     if (syntaxError) return;
+    console.log("Execute clicked");
     clearExecutionState();
     setIsLoading(true);
     try {
-      const response = await fetch("/interpret", {
+      const response = await fetch("/api/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -149,12 +150,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (isRunning && executionTrace.length > 0) {
       intervalRef.current = window.setInterval(() => {
-        if (currentStepIndex < executionTrace.length - 1) {
-          setCurrentStepIndex(currentStepIndex + 1);
-        } else {
+        setCurrentStepIndex(prev => {
+          if (prev < executionTrace.length - 1) {
+            return prev + 1;
+          }
           setIsRunning(false);
           if (intervalRef.current) clearInterval(intervalRef.current);
-        }
+          return prev;
+        });
       }, executionSpeed);
     } else {
       if (intervalRef.current) {
