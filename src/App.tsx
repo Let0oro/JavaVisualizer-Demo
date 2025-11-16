@@ -1,15 +1,16 @@
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { CodeEditor } from './components/CodeEditor';
-import { Controls } from './components/Controls';
-import { VariablesPanel } from './components/VariablesPanel';
-import { ConsolePanel } from './components/ConsolePanel';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CallStackPanel } from './components/CallStackPanel';
+import { CodeEditor } from './components/CodeEditor';
+import { ConsolePanel } from './components/ConsolePanel';
+import { Controls } from './components/Controls';
 import { HeapPanel } from './components/HeapPanel';
+import { VariablesPanel } from './components/VariablesPanel';
 import { WindowVisibilityControl } from './components/WindowVisibilityControl';
-import { Notification } from './components/Notification';
-import { interpretJavaCode, validateJavaSyntax } from './services/javaInterpreter';
+import "./index.css";
+import { validateJavaSyntax } from './lib/javaInterpreter';
 import type { ExecutionStep } from './types';
+import { CstmNotification } from './components/Notification';
 
 const defaultCode = `class Main {
     public static void main() {
@@ -42,7 +43,7 @@ const defaultCode = `class Main {
     }
 }`;
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   const [code, setCode] = useState<string>(defaultCode);
   const [executionTrace, setExecutionTrace] = useState<ExecutionStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -58,7 +59,7 @@ const App: React.FC = () => {
     console: true,
   });
   const [notification, setNotification] = useState<{ message: string; type: 'info' | 'success' | 'error' } | null>(null);
-  
+
   const intervalRef = useRef<number | null>(null);
 
   // Debounced syntax validation
@@ -89,7 +90,12 @@ const App: React.FC = () => {
     clearExecutionState();
     setIsLoading(true);
     try {
-      const trace = await interpretJavaCode(code);
+      const response = await fetch("/interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const { trace } = await response.json();
       if (trace.length === 0 && code.trim().length > 0) {
           setError("Execution produced no steps. The code might be empty, have nothing to visualize, or contain unsupported syntax.");
           setIsLoading(false);
@@ -109,7 +115,7 @@ const App: React.FC = () => {
         setIsLoading(false);
     }
   }, [code, syntaxError]);
-  
+
   const isExecutionFinished = currentStepIndex === executionTrace.length - 1 && executionTrace.length > 0;
 
   const handleResume = () => {
@@ -121,14 +127,14 @@ const App: React.FC = () => {
   const handlePause = () => {
     setIsRunning(false);
   };
-  
+
   const handleNextStep = useCallback(() => {
     setIsRunning(false);
     if (currentStepIndex < executionTrace.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
     }
   }, [currentStepIndex, executionTrace.length]);
-  
+
   const handlePrevStep = useCallback(() => {
     setIsRunning(false);
     if (currentStepIndex > 0) {
@@ -143,14 +149,12 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isRunning && executionTrace.length > 0) {
       intervalRef.current = window.setInterval(() => {
-        setCurrentStepIndex(prev => {
-          if (prev < executionTrace.length - 1) {
-            return prev + 1;
-          }
+        if (currentStepIndex < executionTrace.length - 1) {
+          setCurrentStepIndex(currentStepIndex + 1);
+        } else {
           setIsRunning(false);
           if (intervalRef.current) clearInterval(intervalRef.current);
-          return prev;
-        });
+        }
       }, executionSpeed);
     } else {
       if (intervalRef.current) {
@@ -162,7 +166,7 @@ const App: React.FC = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning, executionTrace.length, executionSpeed]);
-  
+
   const consoleOutput = useMemo(() => {
     if (!executionTrace || executionTrace.length === 0) return '';
     // Slice to include the current step, then filter and map.
@@ -179,26 +183,26 @@ const App: React.FC = () => {
   const changedVariables = useMemo(() => {
     const changed = new Set<string>();
     if (!currentStep) return changed;
-  
+
     if (!prevStep) {
       Object.keys(currentStep.variables).forEach(key => changed.add(key));
       return changed;
     }
-  
+
     const currentVars = currentStep.variables;
     const prevVars = prevStep.variables;
     const currentHeap = currentStep.heap;
     const prevHeap = prevStep.heap;
-  
+
     for (const key in currentVars) {
       const currentValJson = JSON.stringify(currentVars[key]);
       const prevValJson = JSON.stringify(prevVars[key]);
-  
+
       if (!Object.prototype.hasOwnProperty.call(prevVars, key) || currentValJson !== prevValJson) {
         changed.add(key);
       }
     }
-  
+
     for (const key in currentVars) {
       const val = currentVars[key];
       if (val && val.__ref__) {
@@ -208,7 +212,7 @@ const App: React.FC = () => {
         }
       }
     }
-  
+
     return changed;
   }, [currentStep, prevStep]);
 
@@ -216,7 +220,7 @@ const App: React.FC = () => {
     const changed = new Set<string>();
     if (!currentStep) return changed;
     const currentHeap = currentStep.heap;
-    
+
     if (!prevStep) {
       Object.keys(currentHeap).forEach(id => changed.add(id));
       return changed;
@@ -234,12 +238,12 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-300 p-4 flex flex-col">
+    <div className="min-h-screen bg-gray-900 text-gray-300 p-4 flex flex-col w-full">
       <header className="mb-4">
         <h1 className="text-3xl font-bold text-cyan-500">JavaVis</h1>
         <p className="text-gray-400">An Interactive Java Execution Visualizer</p>
       </header>
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <main className="grow grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="flex flex-col gap-4">
           <Controls
             onExecute={handleExecute}
@@ -271,13 +275,13 @@ const App: React.FC = () => {
             visiblePanels={visiblePanels}
             onVisibilityChange={setVisiblePanels}
           />
-          <div className="flex flex-wrap gap-4 flex-grow">
-            {visiblePanels.variables && <VariablesPanel 
-              variables={currentStep?.variables || {}} 
+          <div className="flex flex-wrap gap-4 grow">
+            {visiblePanels.variables && <VariablesPanel
+              variables={currentStep?.variables || {}}
               heap={currentStep?.heap || {}}
-              changedVariables={changedVariables} 
+              changedVariables={changedVariables}
             />}
-            {visiblePanels.heap && <HeapPanel 
+            {visiblePanels.heap && <HeapPanel
               heap={currentStep?.heap || {}}
               changedHeapIds={changedHeapIds}
             />}
@@ -287,7 +291,7 @@ const App: React.FC = () => {
         </div>
       </main>
       {notification && (
-        <Notification
+         <CstmNotification
           message={notification.message}
           type={notification.type}
           onClose={() => setNotification(null)}
@@ -296,5 +300,3 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-export default App;

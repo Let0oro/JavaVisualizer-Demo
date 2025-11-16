@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 
-interface NotificationProps {
+interface CstmNotificationProps {
   message: string;
   type: 'info' | 'success' | 'error';
   onClose: () => void;
 }
 
-export const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) => {
+export const CstmNotification: React.FC <CstmNotificationProps> = ({ message, type, onClose }) => {
   // Auto-dismiss success messages after 3 seconds
   useEffect(() => {
     if (type === 'success') {
@@ -18,7 +18,7 @@ export const Notification: React.FC<NotificationProps> = ({ message, type, onClo
   }, [type, onClose]);
 
   const baseStyle = "fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-4 text-white transition-opacity duration-300";
-  const typeStyles: Record<NotificationProps['type'], string> = {
+  const typeStyles: Record <CstmNotificationProps['type'], string> = {
     success: 'bg-green-500',
     info: 'bg-blue-500',
     error: 'bg-red-500',

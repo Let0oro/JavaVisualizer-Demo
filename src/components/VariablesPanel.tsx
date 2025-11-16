@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { HeapValue, HeapRef, isHeapRef } from '../types';
+import React, { useEffect, useState } from 'react';
+import { type HeapValue, isHeapRef } from '@/types';
 
 interface VariablesPanelProps {
   variables: Record<string, any>;
@@ -25,7 +25,7 @@ const renderValue = (value: any, heap: Record<string, HeapValue>): string => {
       return `${heapObj.className} @${value.__ref__}`;
     }
   }
-  
+
   return JSON.stringify(value);
 };
 
@@ -53,8 +53,8 @@ export const VariablesPanel: React.FC<VariablesPanelProps> = ({ variables, heap,
           {variableEntries.map(([name, value]) => {
             const isHighlighted = highlighted.has(name);
             return (
-              <div 
-                key={name} 
+              <div
+                key={name}
                 className="flex justify-between items-center p-1"
               >
                 <span className="text-blue-500">{name}</span>

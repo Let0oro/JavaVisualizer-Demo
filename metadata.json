@@ -1,5 +1,0 @@
-{
-  "name": "JavaVis: Interactive Java Visualizer",
-  "description": "An interactive web application that allows users to write simple Java code (loops, conditionals, variables), execute it, and visualize its execution step-by-step, including variable states and the current execution line.",
-  "requestFramePermissions": []
-}

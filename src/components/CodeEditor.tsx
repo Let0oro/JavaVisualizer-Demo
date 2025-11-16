@@ -1,7 +1,11 @@
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import type { ExecutionStep } from '@/types';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Tooltip } from './Tooltip';
-import type { ExecutionStep } from '../types';
+import hljs from 'highlight.js/lib/core';
+import java from 'highlight.js/lib/languages/java';
+hljs.registerLanguage('java', java);
+
 
 interface CodeEditorProps {
   code: string;
@@ -34,13 +38,13 @@ const commonEditorStyle: React.CSSProperties = {
 };
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, currentStep, disabled, syntaxError, setNotification }) => {
-  const { 
-    lineNumber: currentLine, 
-    highlightedRegion, 
-    activeLoops, 
-    event 
+  const {
+    lineNumber: currentLine,
+    highlightedRegion,
+    activeLoops,
+    event
   } = currentStep || {};
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
@@ -60,36 +64,28 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
   const [measurement, setMeasurement] = useState({ left: 0, width: 0 });
   const prefixRef = useRef<HTMLSpanElement>(null);
   const highlightRef = useRef<HTMLSpanElement>(null);
-  
+
   const userInteractingRef = useRef(false);
-  
+
   // Effect to load Highlight.js dynamically and reliably.
   useEffect(() => {
     let isMounted = true;
     setNotification({ message: 'Cargando resaltador de sintaxis...', type: 'info' });
 
-    const initializeHljs = async () => {
-      try {
-        const hljsModule = await import('https://esm.sh/highlight.js/lib/core');
-        const javaModule = await import('https://esm.sh/highlight.js/lib/languages/java');
-        const hljs = hljsModule.default;
-        hljs.registerLanguage('java', javaModule.default);
-        
-        if (isMounted) {
-          hljsRef.current = hljs;
-          setIsHljsReady(true);
-          setNotification({ message: 'Resaltador de sintaxis cargado.', type: 'success' });
-        }
-      } catch (error) {
-        console.error("Syntax highlighting error:", error);
-        if (isMounted) {
-          setNotification({ message: 'Error al cargar el resaltador de sintaxis. El coloreado no funcionará.', type: 'error' });
-        }
+    try {
+      hljs.registerLanguage('java', java);
+      if (isMounted) {
+        hljsRef.current = hljs;
+        setIsHljsReady(true);
+        setNotification({ message: 'Resaltador de sintaxis cargado.', type: 'success' });
       }
-    };
+    } catch (error) {
+      console.error("Syntax highlighting error:", error);
+      if (isMounted) {
+        setNotification({ message: 'Error al cargar el resaltador de sintaxis. El coloreado no funcionará.', type: 'error' });
+      }
+    }
 
-    initializeHljs();
-      
     return () => { isMounted = false; };
   }, [setNotification]);
 
@@ -125,14 +121,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
       });
     }
   }, [prefix, highlightText, highlightedRegion, code, currentLine]);
-  
+
   // Effect for auto-scrolling
   useEffect(() => {
     if (currentLine && textareaRef.current && !userInteractingRef.current) {
       const editor = textareaRef.current;
       const editorViewTop = editor.scrollTop;
       const editorViewBottom = editor.scrollTop + editor.clientHeight;
-      
+
       const lineTop = ((currentLine - 1) * LINE_HEIGHT) + PADDING;
       const lineBottom = lineTop + LINE_HEIGHT;
 
@@ -160,7 +156,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
       lineNumbersRef.current.scrollTop = scrollTop;
     }
   }, [disabled]);
-  
+
   const handleEditorMouseMove = (e: React.MouseEvent) => {
     if (!syntaxError || !scrollContainerRef.current || !textareaRef.current) {
       if (errorTooltip.visible) hideErrorTooltip();
@@ -185,24 +181,24 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
   const handleEditorMouseLeave = () => {
     hideErrorTooltip();
   };
-  
+
   const hideErrorTooltip = () => {
     setErrorTooltip(prev => ({ ...prev, visible: false }));
   };
-  
+
   const lineCount = code.split('\n').length;
-  
-  const highlightColor = event === 'allocation' 
-    ? 'bg-magenta-500/40' 
+
+  const highlightColor = event === 'allocation'
+    ? 'bg-magenta-500/40'
     : event === 'return'
     ? 'bg-cyan-500/40'
     : 'bg-yellow-500/40';
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 flex-grow flex flex-col h-[60vh] relative">
+    <div className="bg-gray-800 rounded-lg p-4 grow flex flex-col h-[60vh] relative">
       <h2 className="text-lg font-semibold mb-2 text-magenta-500">Editor de Código</h2>
-      <div 
-        className="flex-grow flex relative min-h-0"
+      <div
+        className="grow flex relative min-h-0"
         ref={scrollContainerRef}
         onMouseMove={handleEditorMouseMove}
         onMouseLeave={handleEditorMouseLeave}
@@ -218,8 +214,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
             const isErrorLine = syntaxError && syntaxError.line === lineNumber;
             const isCurrentLine = currentLine === lineNumber;
             return (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={`relative transition-colors duration-100 flex items-center justify-end ${isErrorLine ? 'text-red-500 font-bold' : ''} ${isCurrentLine ? 'bg-gray-700/80 rounded px-1 text-gray-200' : ''}`}
                 style={{ height: `${LINE_HEIGHT}px` }}
               >
@@ -229,7 +225,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
           })}
         </div>
 
-        <div className="relative flex-grow">
+        <div className="relative grow">
           <textarea
             ref={textareaRef}
             value={code}
@@ -300,7 +296,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
                   {loop.state}
                </div>
             ))}
-            <code 
+            <code
                 className="language-java block relative"
                 dangerouslySetInnerHTML={{ __html: highlightedCodeHtml }}
             >

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { HeapValue, HeapRef, isHeapRef } from '../types';
+import React, { useEffect, useState } from 'react';
+import { type HeapValue, isHeapRef } from '@/types';
 
 interface HeapPanelProps {
   heap: Record<string, HeapValue>;
@@ -43,8 +43,8 @@ export const HeapPanel: React.FC<HeapPanelProps> = ({ heap, changedHeapIds }) =>
             const heapValue = value as HeapValue;
             const typeString = heapValue.type === 'object' ? heapValue.className : 'array';
             return (
-              <div 
-                key={id} 
+              <div
+                key={id}
                 className={`p-1 rounded transition-colors duration-500 ${isHighlighted ? 'bg-yellow-500/30' : 'bg-transparent'}`}
               >
                 <span className="text-red-500">{id}:</span>

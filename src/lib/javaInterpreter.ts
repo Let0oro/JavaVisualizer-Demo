@@ -1,5 +1,5 @@
 
-import { isHeapRef, type ExecutionStep, type HeapValue, type HeapRef, type StackFrameInfo, type HighlightedRegion } from '../types';
+import type { ExecutionStep, HeapRef, HeapValue } from '@/types';
 
 const MAX_STEPS = 25000;
 
@@ -53,6 +53,7 @@ function tokenize(source: string): Token[] {
 
   while (cursor < source.length) {
     let char = source[cursor];
+    if (!char) continue;
 
     if (/\s/.test(char)) {
       if (char === '\n') line++;
@@ -75,11 +76,13 @@ function tokenize(source: string): Token[] {
 
     if (twoCharOps[source.substring(cursor, cursor + 2)]) {
         const op = source.substring(cursor, cursor + 2);
-        tokens.push({ type: twoCharOps[op], value: op, line });
+        const type = twoCharOps[op]!;
+        if (!type) throw new ParseError(`Unknown operator: ${op}`, line);
+        tokens.push({ type, value: op, line });
         cursor += 2;
         continue;
     }
-    
+
     const oneCharOps: Record<string, TokenType> = {
       '=': TokenType.Equals, '+': TokenType.Plus, '-': TokenType.Minus, '*': TokenType.Star, '/': TokenType.Slash,
       '(': TokenType.OpenParen, ')': TokenType.CloseParen, '{': TokenType.OpenBrace, '}': TokenType.CloseBrace,
@@ -95,7 +98,7 @@ function tokenize(source: string): Token[] {
 
     if (/[a-zA-Z_]/.test(char)) {
       let value = '';
-      while (cursor < source.length && /[a-zA-Z0-9_]/.test(source[cursor])) {
+      while (cursor < source.length && /[a-zA-Z0-9_]/.test(source[cursor]!)) {
         value += source[cursor++];
       }
       const type = KEYWORDS[value] ?? TokenType.Identifier;
@@ -106,7 +109,7 @@ function tokenize(source: string): Token[] {
     if (/[0-9]/.test(char)) {
         let value = '';
         let isDouble = false;
-        while (cursor < source.length && (/[0-9]/.test(source[cursor]) || (source[cursor] === '.' && !isDouble))) {
+        while (cursor < source.length && (/[0-9]/.test(source[cursor]!) || (source[cursor] === '.' && !isDouble))) {
             if (source[cursor] === '.') isDouble = true;
             value += source[cursor++];
         }
@@ -114,7 +117,7 @@ function tokenize(source: string): Token[] {
         tokens.push({ type, value, line });
         continue;
     }
-    
+
     if (char === '"') {
         let value = '';
         const startLine = line;
@@ -127,7 +130,7 @@ function tokenize(source: string): Token[] {
             value += stringChar;
             cursor++;
         }
-        
+
         if (cursor >= source.length || source[cursor] !== '"') {
             throw new ParseError("Unclosed string literal.", startLine);
         }
@@ -190,7 +193,7 @@ class Parser {
   constructor(tokens: Token[]) {
     this.tokens = tokens;
   }
-  
+
   private at() { return this.tokens[this.cursor]; }
   private peek(offset = 1) { return this.tokens[this.cursor + offset]; }
   private eat() { return this.tokens[this.cursor++]; }
@@ -198,7 +201,7 @@ class Parser {
     const currentToken = this.at();
     const prev = this.eat();
     if (!prev || prev.type !== type) {
-      throw new ParseError(err, currentToken.line);
+      throw new ParseError(err, currentToken!.line);
     }
     return prev;
   }
@@ -208,7 +211,7 @@ class Parser {
 
   public parse(): Program {
     const body: Stmt[] = [];
-    while (this.at().type !== TokenType.EOF) {
+    while (this.at()?.type !== TokenType.EOF) {
       body.push(this.parseStmt());
     }
     return { kind: "Program", body, line: 1 };
@@ -216,7 +219,7 @@ class Parser {
 
   private parseStmt(): Stmt {
     const current = this.at();
-    switch (current.type) {
+    switch (current?.type) {
       case TokenType.Class: return this.parseClassDeclaration();
       case TokenType.Return: return this.parseReturnStatement();
       case TokenType.For: return this.parseForStatement();
@@ -236,18 +239,18 @@ class Parser {
       }
       default: {
         // Lookahead to differentiate declarations from expressions
-        if (this.isTypeToken(this.at())) {
+        if (this.isTypeToken(this.at()!)) {
             const peek1 = this.peek(1);
-            const isVarDecl = peek1.type === TokenType.Identifier;
-            const isArrayDecl = peek1.type === TokenType.OpenBracket 
-                              && this.peek(2).type === TokenType.CloseBracket 
-                              && this.peek(3).type === TokenType.Identifier;
+            const isVarDecl = peek1?.type === TokenType.Identifier;
+            const isArrayDecl = peek1?.type === TokenType.OpenBracket
+                              && this.peek(2)?.type === TokenType.CloseBracket
+                              && this.peek(3)?.type === TokenType.Identifier;
 
             if(isVarDecl || isArrayDecl) {
                 // It's a declaration, but is it a method or variable?
                 // Check for '(' after the identifier part.
                 const lookaheadIndex = isArrayDecl ? 4 : 2;
-                if(this.peek(lookaheadIndex).type === TokenType.OpenParen) {
+                if(this.peek(lookaheadIndex)?.type === TokenType.OpenParen) {
                     return this.parseMethodDeclaration();
                 }
                 return this.parseVariableDeclaration();
@@ -280,7 +283,7 @@ class Parser {
     }
     const name = this.expect(TokenType.Identifier, "Expected method name.").value;
     this.expect(TokenType.OpenParen, "Expected '(' after method name.");
-    
+
     const params: Param[] = [];
     if (this.at().type !== TokenType.CloseParen) {
         do {
@@ -298,7 +301,7 @@ class Parser {
     const body = this.parseBlockStatement() as BlockStatement;
     return { kind: "MethodDeclaration", returnType, name, params, body: body.body, line: returnTypeToken.line };
   }
-  
+
   private parseBlockStatement(): BlockStatement {
     const startToken = this.expect(TokenType.OpenBrace, "Expected '{' to start a block.");
     const body: Stmt[] = [];
@@ -308,7 +311,7 @@ class Parser {
     this.expect(TokenType.CloseBrace, "Expected '}' to close a block.");
     return { kind: "BlockStatement", body, line: startToken.line };
   }
-  
+
   private parseVariableDeclaration(): VariableDeclaration {
       const startToken = this.at();
       let type = this.eat().value;
@@ -326,7 +329,7 @@ class Parser {
       this.expect(TokenType.Semicolon, "Expected ';' after variable declaration.");
       return { kind: "VariableDeclaration", type, name, value, line: startToken.line };
   }
-  
+
   private parseForStatement(): ForStatement {
     const startToken = this.eat(); // for
     this.expect(TokenType.OpenParen, "Expected '(' after 'for'.");
@@ -358,7 +361,7 @@ class Parser {
     this.expect(TokenType.Semicolon, "Expected ';' after do-while statement.");
     return { kind: "DoWhileStatement", test, body, line: startToken.line };
   }
-  
+
   private parseIfStatement(): IfStatement {
       const startToken = this.eat(); // if
       this.expect(TokenType.OpenParen, "Expected '(' after 'if'.");
@@ -372,7 +375,7 @@ class Parser {
       }
       return { kind: "IfStatement", test, consequent, alternate, line: startToken.line };
   }
-  
+
   private parseReturnStatement(): ReturnStatement {
       const startToken = this.eat(); // return
       let argument: Expr | undefined;
@@ -402,7 +405,7 @@ class Parser {
     }
     return left;
   }
-  
+
   private parseLogicalOrExpr(): Expr {
     let left = this.parseLogicalAndExpr();
     while (this.at().type === TokenType.OrOr) {
@@ -442,7 +445,7 @@ class Parser {
     }
     return left;
   }
-  
+
   private parseMultiplicativeExpr(): Expr {
     let left = this.parseUnaryExpr();
     while (this.at().type === TokenType.Star || this.at().type === TokenType.Slash) {
@@ -461,7 +464,7 @@ class Parser {
     }
     return this.parseCallMemberExpr();
   }
-  
+
   private parseCallMemberExpr(): Expr {
     let member = this.parsePrimaryExpr();
     while ([TokenType.Dot, TokenType.OpenParen, TokenType.OpenBracket].includes(this.at().type)) {
@@ -491,7 +494,7 @@ class Parser {
     if (computed) this.expect(TokenType.CloseBracket, "Expected ']' for computed property.");
     return { kind: 'MemberExpr', object, property, computed, line: object.line };
   }
-  
+
   private parsePrimaryExpr(): Expr {
     const token = this.at();
     switch (token.type) {
@@ -524,7 +527,7 @@ class Parser {
   private parseNewExpr(): NewExpr | ArrayCreationExpr {
     const startToken = this.eat(); // new
     const callee = this.expect(TokenType.Identifier, "Expected class or type name after 'new'.");
-    
+
     if (this.at().type === TokenType.OpenParen) { // new Sorter()
       this.eat();
       this.expect(TokenType.CloseParen, "Expected ')' after new expression.");
@@ -537,7 +540,7 @@ class Parser {
     }
     throw new ParseError("Invalid 'new' expression.", startToken.line);
   }
-  
+
   private parseArrayLiteral(): ArrayCreationExpr {
       const startToken = this.eat(); // {
       const values: Expr[] = [];
@@ -566,18 +569,18 @@ class Environment {
     this.variables.set(name, value);
     return value;
   }
-  
+
   public assign(name: string, value: any): any {
     const env = this.resolve(name);
     env.variables.set(name, value);
     return value;
   }
-  
+
   public lookup(name: string): any {
     const env = this.resolve(name);
     return env.variables.get(name);
   }
-  
+
   public resolve(name: string): Environment {
       if (this.variables.has(name)) return this;
       if (this.parent) return this.parent.resolve(name);
@@ -633,17 +636,17 @@ class Interpreter {
         this.globalEnv.declare(node.name, { type: 'class', name: node.name, methods });
       }
     }
-    
+
     const mainClass = this.globalEnv.lookup("Main");
     if (!mainClass?.methods?.main) throw new Error("Main.main method not found.");
-    
+
     this.callStack.push({ methodName: 'main', line: mainClass.methods.main.line, env: this.currentEnv });
     this.evaluate({ kind: "BlockStatement", body: mainClass.methods.main.body, line: mainClass.methods.main.line });
     this.callStack.pop();
 
     return this.trace;
   }
-  
+
   private addTrace(line: number, event?: ExecutionStep['event']) {
       if(this.trace.length > MAX_STEPS) throw new Error(`Execution step limit reached (${MAX_STEPS}).`);
       this.trace.push({
@@ -806,8 +809,8 @@ class Interpreter {
           if (type === 'boolean') defaultValue = false;
           else if (type !== 'int' && type !== 'double') defaultValue = null;
 
-          const values = expr.values 
-            ? expr.values.map(v => this.evaluate(v)) 
+          const values = expr.values
+            ? expr.values.map(v => this.evaluate(v))
             : Array(this.evaluate(expr.size!)).fill(defaultValue);
           this.heap[refId] = { type: 'array', elementType: type, values };
           this.addTrace(expr.line, 'allocation');
@@ -870,7 +873,7 @@ class Interpreter {
                 }
             }
         }
-        
+
         const calleeInfo = expr.callee as MemberExpr;
         const instanceRef = this.evaluate(calleeInfo.object) as HeapRef;
         const instance = this.heap[instanceRef.__ref__];
@@ -878,18 +881,18 @@ class Interpreter {
 
         const classDef = this.globalEnv.lookup(instance.className);
         const method = classDef.methods[(calleeInfo.property as Identifier).symbol];
-        
+
         const activationRecord = new Environment(this.globalEnv);
         for(let i = 0; i < method.params.length; i++) {
             activationRecord.declare(method.params[i].name, args[i]);
         }
-        
+
         const callerEnv = this.currentEnv;
         this.callStack.push({ methodName: method.name, line: method.line, env: callerEnv });
         this.currentEnv = activationRecord;
-        
+
         const result = this.evaluate({ kind: "BlockStatement", body: method.body, line: method.line });
-        
+
         this.callStack.pop();
         this.currentEnv = callerEnv;
 
@@ -937,7 +940,7 @@ export const interpretJavaCode = (code: string): Promise<ExecutionStep[]> => {
         const ast = new Parser(tokens).parse();
         const interpreter = new Interpreter();
         const trace = interpreter.run(ast);
-        
+
         if (trace.length === 0 && code.trim().length > 0) {
           reject(new Error("Interpretation failed. The code may contain unsupported syntax or logic errors."));
           return;
