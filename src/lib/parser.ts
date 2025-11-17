@@ -57,21 +57,21 @@ export class Parser {
       default: {
         // Lookahead to differentiate declarations from expressions
         if (this.isTypeToken(this.at()!)) {
-            const peek1 = this.peek(1);
-            const isVarDecl = peek1?.type === TokenType.Identifier;
-            const isArrayDecl = peek1?.type === TokenType.OpenBracket
-                              && this.peek(2)?.type === TokenType.CloseBracket
-                              && this.peek(3)?.type === TokenType.Identifier;
+          const peek1 = this.peek(1);
+          const isVarDecl = peek1?.type === TokenType.Identifier;
+          const isArrayDecl = peek1?.type === TokenType.OpenBracket
+            && this.peek(2)?.type === TokenType.CloseBracket
+            && this.peek(3)?.type === TokenType.Identifier;
 
-            if(isVarDecl || isArrayDecl) {
-                // It's a declaration, but is it a method or variable?
-                // Check for '(' after the identifier part.
-                const lookaheadIndex = isArrayDecl ? 4 : 2;
-                if(this.peek(lookaheadIndex)?.type === TokenType.OpenParen) {
-                    return this.parseMethodDeclaration();
-                }
-                return this.parseVariableDeclaration();
+          if (isVarDecl || isArrayDecl) {
+            // It's a declaration, but is it a method or variable?
+            // Check for '(' after the identifier part.
+            const lookaheadIndex = isArrayDecl ? 4 : 2;
+            if (this.peek(lookaheadIndex)?.type === TokenType.OpenParen) {
+              return this.parseMethodDeclaration();
             }
+            return this.parseVariableDeclaration();
+          }
         }
         return this.parseExpressionStatement();
       }
@@ -79,16 +79,16 @@ export class Parser {
   }
 
   private parseClassDeclaration(): AST.ClassDeclaration {
-      const startToken = this.eat()!; // class
-      const name = this.expect(TokenType.Identifier, "Expected class name.").value;
-      this.expect(TokenType.OpenBrace, "Expected '{' after class name.");
-      const body: AST.Stmt[] = [];
-      while(this.at()!.type !== TokenType.CloseBrace && this.at()!.type !== TokenType.EOF) {
-        while(this.at()!.type === TokenType.Public || this.at()!.type === TokenType.Static) this.eat();
-        body.push(this.parseStmt());
-      }
-      this.expect(TokenType.CloseBrace, "Expected '}' to close class body.");
-      return { kind: "ClassDeclaration", name, body, line: startToken.line };
+    const startToken = this.eat()!; // class
+    const name = this.expect(TokenType.Identifier, "Expected class name.").value;
+    this.expect(TokenType.OpenBrace, "Expected '{' after class name.");
+    const body: AST.Stmt[] = [];
+    while (this.at()!.type !== TokenType.CloseBrace && this.at()!.type !== TokenType.EOF) {
+      while (this.at()!.type === TokenType.Public || this.at()!.type === TokenType.Static) this.eat();
+      body.push(this.parseStmt());
+    }
+    this.expect(TokenType.CloseBrace, "Expected '}' to close class body.");
+    return { kind: "ClassDeclaration", name, body, line: startToken.line };
   }
 
   private parseMethodDeclaration(): AST.MethodDeclaration {
@@ -103,16 +103,16 @@ export class Parser {
 
     const params: AST.Param[] = [];
     if (this.at()?.type !== TokenType.CloseParen) {
-        do {
-            if (this.at()?.type === TokenType.Comma) this.eat();
-            let type = this.eat()!.value;
-            if(this.at()?.type === TokenType.OpenBracket) {
-                this.eat(); this.expect(TokenType.CloseBracket, "Expected ']'");
-                type += '[]';
-            }
-            const paramName = this.expect(TokenType.Identifier, "Expected param name").value;
-            params.push({ kind: "Param", type, name: paramName, line: this.at()!.line });
-        } while(this.at()?.type === TokenType.Comma);
+      do {
+        if (this.at()?.type === TokenType.Comma) this.eat();
+        let type = this.eat()!.value;
+        if (this.at()?.type === TokenType.OpenBracket) {
+          this.eat(); this.expect(TokenType.CloseBracket, "Expected ']'");
+          type += '[]';
+        }
+        const paramName = this.expect(TokenType.Identifier, "Expected param name").value;
+        params.push({ kind: "Param", type, name: paramName, line: this.at()!.line });
+      } while (this.at()?.type === TokenType.Comma);
     }
     this.expect(TokenType.CloseParen, "Expected ')' to close parameter list.");
     const body = this.parseBlockStatement() as AST.BlockStatement;
@@ -123,28 +123,28 @@ export class Parser {
     const startToken = this.expect(TokenType.OpenBrace, "Expected '{' to start a block.");
     const body: AST.Stmt[] = [];
     while (this.at()!.type !== TokenType.CloseBrace && this.at()!.type !== TokenType.EOF) {
-        body.push(this.parseStmt());
+      body.push(this.parseStmt());
     }
     this.expect(TokenType.CloseBrace, "Expected '}' to close a block.");
     return { kind: "BlockStatement", body, line: startToken.line };
   }
 
   private parseVariableDeclaration(): AST.VariableDeclaration {
-      const startToken = this.at()!;
-      let type = this.eat()!.value;
-      if(this.at()?.type === TokenType.OpenBracket) {
-          this.eat();
-          this.expect(TokenType.CloseBracket, "Expected ']' in array type.");
-          type += '[]';
-      }
-      const name = this.expect(TokenType.Identifier, "Expected variable name.").value;
-      let value: AST.Expr | undefined;
-      if (this.at()?.type === TokenType.Equals) {
-          this.eat();
-          value = this.parseExpr();
-      }
-      this.expect(TokenType.Semicolon, "Expected ';' after variable declaration.");
-      return { kind: "VariableDeclaration", type, name, value, line: startToken.line };
+    const startToken = this.at()!;
+    let type = this.eat()!.value;
+    if (this.at()?.type === TokenType.OpenBracket) {
+      this.eat();
+      this.expect(TokenType.CloseBracket, "Expected ']' in array type.");
+      type += '[]';
+    }
+    const name = this.expect(TokenType.Identifier, "Expected variable name.").value;
+    let value: AST.Expr | undefined;
+    if (this.at()?.type === TokenType.Equals) {
+      this.eat();
+      value = this.parseExpr();
+    }
+    this.expect(TokenType.Semicolon, "Expected ';' after variable declaration.");
+    return { kind: "VariableDeclaration", type, name, value, line: startToken.line };
   }
 
   private parseForStatement(): AST.ForStatement {
@@ -180,34 +180,34 @@ export class Parser {
   }
 
   private parseIfStatement(): AST.IfStatement {
-      const startToken = this.eat()!; // if
-      this.expect(TokenType.OpenParen, "Expected '(' after 'if'.");
-      const test = this.parseExpr();
-      this.expect(TokenType.CloseParen, "Expected ')' after if condition.");
-      const consequent = this.parseStmt();
-      let alternate: AST.Stmt | undefined;
-      if (this.at()?.type === TokenType.Else) {
-          this.eat();
-          alternate = this.parseStmt();
-      }
-      return { kind: "IfStatement", test, consequent, alternate, line: startToken.line };
+    const startToken = this.eat()!; // if
+    this.expect(TokenType.OpenParen, "Expected '(' after 'if'.");
+    const test = this.parseExpr();
+    this.expect(TokenType.CloseParen, "Expected ')' after if condition.");
+    const consequent = this.parseStmt();
+    let alternate: AST.Stmt | undefined;
+    if (this.at()?.type === TokenType.Else) {
+      this.eat();
+      alternate = this.parseStmt();
+    }
+    return { kind: "IfStatement", test, consequent, alternate, line: startToken.line };
   }
 
   private parseReturnStatement(): AST.ReturnStatement {
-      const startToken = this.eat()!; // return
-      let argument: AST.Expr | undefined;
-      if (this.at()!.type !== TokenType.Semicolon) {
-          argument = this.parseExpr();
-      }
-      this.expect(TokenType.Semicolon, "Expected ';' after return statement.");
-      return { kind: "ReturnStatement", argument, line: startToken.line };
+    const startToken = this.eat()!; // return
+    let argument: AST.Expr | undefined;
+    if (this.at()!.type !== TokenType.Semicolon) {
+      argument = this.parseExpr();
+    }
+    this.expect(TokenType.Semicolon, "Expected ';' after return statement.");
+    return { kind: "ReturnStatement", argument, line: startToken.line };
   }
 
   private parseExpressionStatement(): AST.ExpressionStatement {
-      const expression = this.parseExpr();
-      const line = this.at()!.line;
-      this.expect(TokenType.Semicolon, "Expected ';' after expression.");
-      return { kind: "ExpressionStatement", expression, line };
+    const expression = this.parseExpr();
+    const line = this.at()!.line;
+    this.expect(TokenType.Semicolon, "Expected ';' after expression.");
+    return { kind: "ExpressionStatement", expression, line };
   }
 
   // --- Expression Parsing (with operator precedence) ---
@@ -226,9 +226,9 @@ export class Parser {
   private parseLogicalOrExpr(): AST.Expr {
     let left = this.parseLogicalAndExpr();
     while (this.at()?.type === TokenType.OrOr) {
-        const operator = this.eat()!.value;
-        const right = this.parseLogicalAndExpr();
-        left = { kind: "LogicalExpr", left, right, operator, line: left.line };
+      const operator = this.eat()!.value;
+      const right = this.parseLogicalAndExpr();
+      left = { kind: "LogicalExpr", left, right, operator, line: left.line };
     }
     return left;
   }
@@ -236,9 +236,9 @@ export class Parser {
   private parseLogicalAndExpr(): AST.Expr {
     let left = this.parseComparisonExpr();
     while (this.at()?.type === TokenType.AndAnd) {
-        const operator = this.eat()!.value;
-        const right = this.parseComparisonExpr();
-        left = { kind: "LogicalExpr", left, right, operator, line: left.line };
+      const operator = this.eat()!.value;
+      const right = this.parseComparisonExpr();
+      left = { kind: "LogicalExpr", left, right, operator, line: left.line };
     }
     return left;
   }
@@ -265,7 +265,11 @@ export class Parser {
 
   private parseMultiplicativeExpr(): AST.Expr {
     let left = this.parseUnaryExpr();
-    while (this.at()?.type === TokenType.Star || this.at()?.type === TokenType.Slash) {
+    while (
+      this.at()?.type === TokenType.Star ||
+      this.at()?.type === TokenType.Slash ||
+      this.at()?.type === TokenType.Percent
+    ) {
       const operator = this.eat()!.value;
       const right = this.parseUnaryExpr();
       left = { kind: "BinaryExpr", left, right, operator, line: left.line };
@@ -275,9 +279,9 @@ export class Parser {
 
   private parseUnaryExpr(): AST.Expr {
     if (this.at()?.type === TokenType.Bang || this.at()?.type === TokenType.Minus) {
-        const token = this.eat()!;
-        const argument = this.parseUnaryExpr();
-        return { kind: "UnaryExpr", operator: token.value, argument, line: token.line };
+      const token = this.eat()!;
+      const argument = this.parseUnaryExpr();
+      return { kind: "UnaryExpr", operator: token.value, argument, line: token.line };
     }
     return this.parseCallMemberExpr();
   }
@@ -285,9 +289,9 @@ export class Parser {
   private parseCallMemberExpr(): AST.Expr {
     let member = this.parsePrimaryExpr();
     while ([TokenType.Dot, TokenType.OpenParen, TokenType.OpenBracket].includes(this.at()!.type)) {
-        if (this.at()?.type === TokenType.OpenParen) member = this.parseCallExpr(member);
-        else if (this.at()?.type === TokenType.Dot) member = this.parseMemberExpr(member);
-        else if (this.at()?.type === TokenType.OpenBracket) member = this.parseMemberExpr(member, true);
+      if (this.at()?.type === TokenType.OpenParen) member = this.parseCallExpr(member);
+      else if (this.at()?.type === TokenType.Dot) member = this.parseMemberExpr(member);
+      else if (this.at()?.type === TokenType.OpenBracket) member = this.parseMemberExpr(member, true);
     }
     return member;
   }
@@ -296,10 +300,10 @@ export class Parser {
     this.eat(); // (
     const args: AST.Expr[] = [];
     if (this.at()!.type !== TokenType.CloseParen) {
-        do {
-            if(this.at()?.type === TokenType.Comma) this.eat();
-            args.push(this.parseExpr());
-        } while (this.at()?.type === TokenType.Comma);
+      do {
+        if (this.at()?.type === TokenType.Comma) this.eat();
+        args.push(this.parseExpr());
+      } while (this.at()?.type === TokenType.Comma);
     }
     this.expect(TokenType.CloseParen, "Expected ')' to close arguments.");
     return { kind: "CallExpr", callee, args, line: callee.line };
@@ -318,9 +322,9 @@ export class Parser {
       case TokenType.System:
       case TokenType.Identifier:
         if ([TokenType.PlusPlus, TokenType.MinusMinus].includes(this.peek()!.type)) {
-            const ident = this.eat()!;
-            const op = this.eat()!;
-            return { kind: "PostfixExpr", operator: op.value, argument: { kind: "Identifier", symbol: ident.value, line: token.line }, line: token.line };
+          const ident = this.eat()!;
+          const op = this.eat()!;
+          return { kind: "PostfixExpr", operator: op.value, argument: { kind: "Identifier", symbol: ident.value, line: token.line }, line: token.line };
         }
         return { kind: "Identifier", symbol: this.eat()!.value, line: token.line };
       case TokenType.IntegerLiteral: return { kind: "NumericLiteral", value: parseInt(this.eat()!.value), line: token.line };
@@ -359,16 +363,16 @@ export class Parser {
   }
 
   private parseArrayLiteral(): AST.ArrayCreationExpr {
-      const startToken = this.eat()!; // {
-      const values: AST.Expr[] = [];
-      if(this.at()!.type !== TokenType.CloseBrace) {
-          do {
-            if(this.at()?.type === TokenType.Comma) this.eat();
-            values.push(this.parseExpr());
-          } while(this.at()?.type === TokenType.Comma)
-      }
-      this.expect(TokenType.CloseBrace, "Expected '}' to close array literal.");
-      return { kind: "ArrayCreationExpr", type: 'int', values, line: startToken.line };
+    const startToken = this.eat()!; // {
+    const values: AST.Expr[] = [];
+    if (this.at()!.type !== TokenType.CloseBrace) {
+      do {
+        if (this.at()?.type === TokenType.Comma) this.eat();
+        values.push(this.parseExpr());
+      } while (this.at()?.type === TokenType.Comma)
+    }
+    this.expect(TokenType.CloseBrace, "Expected '}' to close array literal.");
+    return { kind: "ArrayCreationExpr", type: 'int', values, line: startToken.line };
   }
 }
 

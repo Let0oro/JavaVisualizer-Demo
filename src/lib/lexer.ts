@@ -2,7 +2,7 @@ export enum TokenType {
   Class, Void, Int, Static, Public, For, If, Else, New, System, Boolean,
   Double, String, True, False, Return, While, Do, Break, Continue,
   Identifier, IntegerLiteral, DoubleLiteral, StringLiteral,
-  Equals, Plus, Minus, Star, Slash, OpenParen, CloseParen, OpenBrace, CloseBrace,
+  Equals, Plus, Minus, Percent, Star, Slash, OpenParen, CloseParen, OpenBrace, CloseBrace,
   OpenBracket, CloseBracket, Semicolon, Comma, Dot, GreaterThan, LessThan, Bang,
   EqualsEquals, NotEquals, GreaterEquals, LessEquals,
   PlusPlus, MinusMinus, PlusEquals, MinusEquals, StarEquals, SlashEquals, AndAnd, OrOr,
@@ -68,7 +68,8 @@ export function tokenize(source: string): Token[] {
       '=': TokenType.Equals, '+': TokenType.Plus, '-': TokenType.Minus, '*': TokenType.Star, '/': TokenType.Slash,
       '(': TokenType.OpenParen, ')': TokenType.CloseParen, '{': TokenType.OpenBrace, '}': TokenType.CloseBrace,
       '[': TokenType.OpenBracket, ']': TokenType.CloseBracket, ';': TokenType.Semicolon, ',': TokenType.Comma,
-      '.': TokenType.Dot, '>': TokenType.GreaterThan, '<': TokenType.LessThan, '!': TokenType.Bang
+      '.': TokenType.Dot, '>': TokenType.GreaterThan, '<': TokenType.LessThan, '!': TokenType.Bang,
+      "%": TokenType.Percent,
     };
 
     if (oneCharOps[char]) {
