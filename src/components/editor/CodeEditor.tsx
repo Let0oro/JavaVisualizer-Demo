@@ -1,9 +1,9 @@
 
 import type { ExecutionStep } from '@/types';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Tooltip } from './Tooltip';
 import hljs from 'highlight.js/lib/core';
 import java from 'highlight.js/lib/languages/java';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Tooltip } from '@/components';
 hljs.registerLanguage('java', java);
 
 

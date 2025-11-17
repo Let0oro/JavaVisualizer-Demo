@@ -10,12 +10,10 @@ export const CstmNotification: React.FC <CstmNotificationProps> = ({ message, ty
   // Auto-dismiss success messages after 3 seconds
   useEffect(() => {
     if (type === 'success') {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
+      const timer = setTimeout(onClose, 3000);
       return () => clearTimeout(timer);
     }
-  }, [type, onClose]);
+  }, [type, onClose, message]);
 
   const baseStyle = "fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-4 text-white transition-opacity duration-300";
   const typeStyles: Record <CstmNotificationProps['type'], string> = {
