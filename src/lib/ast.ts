@@ -32,6 +32,38 @@ export interface ArrayCreationExpr extends Node { kind: "ArrayCreationExpr", typ
 export interface PostfixExpr extends Node { kind: "PostfixExpr", operator: string, argument: Identifier };
 
 
-export type Expr = BinaryExpr | LogicalExpr | UnaryExpr | Identifier | NumericLiteral | DoubleLiteral | BooleanLiteral | StringLiteral | AssignmentExpr | MemberExpr | CallExpr | NewExpr | ArrayCreationExpr | PostfixExpr;
+export interface NullLiteral extends Node {
+  kind: "NullLiteral";
+}
+
+export type Expr = BinaryExpr | LogicalExpr | UnaryExpr | Identifier | NumericLiteral | DoubleLiteral | BooleanLiteral | StringLiteral | AssignmentExpr | NullLiteral | MemberExpr | CallExpr | NewExpr | ArrayCreationExpr | PostfixExpr | CompoundAssignmentExpr;
 
 export type Stmt = ClassDeclaration | MethodDeclaration | VariableDeclaration | ExpressionStatement | BlockStatement | ForStatement | WhileStatement | DoWhileStatement | IfStatement | ReturnStatement | BreakStatement | ContinueStatement;
+
+
+// ast.ts
+export interface PreIncrementExpr extends Node {
+  kind: "PreIncrementExpr";
+  operator: "++" | "--";
+  argument: Identifier;
+}
+
+export interface ConditionalExpr extends Node {
+  kind: "ConditionalExpr";
+  test: Expr;
+  consequent: Expr;
+  alternate: Expr;
+}
+
+export interface InstanceofExpr extends Node {
+  kind: "InstanceofExpr";
+  expression: Expr;
+  type: string;
+}
+
+export interface CompoundAssignmentExpr extends Node {
+  kind: "CompoundAssignmentExpr";
+  assignee: Expr;
+  operator: "+=" | "-=" | "*=" | "/=";
+  value: Expr;
+}

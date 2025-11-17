@@ -6,7 +6,12 @@ export enum TokenType {
   OpenBracket, CloseBracket, Semicolon, Comma, Dot, GreaterThan, LessThan, Bang,
   EqualsEquals, NotEquals, GreaterEquals, LessEquals,
   PlusPlus, MinusMinus, PlusEquals, MinusEquals, StarEquals, SlashEquals, AndAnd, OrOr,
-  EOF
+  PercentEquals, QuestionMark, Colon,
+  Char, Long, This, Final, Instanceof,
+  Switch, Case, Default,
+  Try, Catch, Finally, Throw,
+  CharLiteral, LongLiteral,
+  EOF,
 }
 
 export interface Token {
@@ -30,6 +35,18 @@ export function tokenize(source: string): Token[] {
     "true": TokenType.True, "false": TokenType.False, "return": TokenType.Return,
     "while": TokenType.While, "do": TokenType.Do, "break": TokenType.Break,
     "continue": TokenType.Continue, "String": TokenType.String,
+    "char": TokenType.Char,
+    "long": TokenType.Long,
+    "this": TokenType.This,
+    "final": TokenType.Final,
+    "instanceof": TokenType.Instanceof,
+    "switch": TokenType.Switch,
+    "case": TokenType.Case,
+    "default": TokenType.Default,
+    "try": TokenType.Try,
+    "catch": TokenType.Catch,
+    "finally": TokenType.Finally,
+    "throw": TokenType.Throw,
   };
 
   while (cursor < source.length) {
@@ -52,7 +69,7 @@ export function tokenize(source: string): Token[] {
     const twoCharOps: Record<string, TokenType> = {
         '==': TokenType.EqualsEquals, '!=': TokenType.NotEquals, '>=': TokenType.GreaterEquals, '<=': TokenType.LessEquals,
         '++': TokenType.PlusPlus, '--': TokenType.MinusMinus, '+=': TokenType.PlusEquals, '-=': TokenType.MinusEquals,
-        '*=': TokenType.StarEquals, '/=': TokenType.SlashEquals, '&&': TokenType.AndAnd, '||': TokenType.OrOr,
+        '*=': TokenType.StarEquals, '/=': TokenType.SlashEquals, '&&': TokenType.AndAnd, '||': TokenType.OrOr,  '%=': TokenType.PercentEquals,
     };
 
     if (twoCharOps[source.substring(cursor, cursor + 2)]) {
@@ -69,7 +86,8 @@ export function tokenize(source: string): Token[] {
       '(': TokenType.OpenParen, ')': TokenType.CloseParen, '{': TokenType.OpenBrace, '}': TokenType.CloseBrace,
       '[': TokenType.OpenBracket, ']': TokenType.CloseBracket, ';': TokenType.Semicolon, ',': TokenType.Comma,
       '.': TokenType.Dot, '>': TokenType.GreaterThan, '<': TokenType.LessThan, '!': TokenType.Bang,
-      "%": TokenType.Percent,
+      "%": TokenType.Percent,   '?': TokenType.QuestionMark,
+      ':': TokenType.Colon,
     };
 
     if (oneCharOps[char]) {
@@ -89,15 +107,28 @@ export function tokenize(source: string): Token[] {
     }
 
     if (/[0-9]/.test(char)) {
-        let value = '';
-        let isDouble = false;
-        while (cursor < source.length && (/[0-9]/.test(source[cursor]!) || (source[cursor] === '.' && !isDouble))) {
-            if (source[cursor] === '.') isDouble = true;
-            value += source[cursor++];
-        }
-        const type = isDouble ? TokenType.DoubleLiteral : TokenType.IntegerLiteral;
-        tokens.push({ type, value, line });
-        continue;
+      let value = '';
+      let isDouble = false;
+      let isLong = false;
+
+      while (cursor < source.length && (/[0-9]/.test(source[cursor]!) || (source[cursor] === '.' && !isDouble))) {
+        if (source[cursor] === '.') isDouble = true;
+        value += source[cursor++];
+      }
+
+      // Check for L or l suffix
+      if (source[cursor] === 'L' || source[cursor] === 'l') {
+        isLong = true;
+        cursor++;
+      }
+
+      let type: TokenType;
+      if (isLong) type = TokenType.LongLiteral;
+      else if (isDouble) type = TokenType.DoubleLiteral;
+      else type = TokenType.IntegerLiteral;
+
+      tokens.push({ type, value, line });
+      continue;
     }
 
     if (char === '"') {
@@ -121,6 +152,41 @@ export function tokenize(source: string): Token[] {
         tokens.push({ type: TokenType.StringLiteral, value, line: startLine });
         continue;
     }
+
+    // AGREGAR ESTE BLOQUE después del bloque de strings
+
+if (char === "'") {
+  let value = '';
+  const startLine = line;
+  cursor++; // consume opening quote
+
+  // Handle escaped chars
+  if (source[cursor] === '\\') {
+    cursor++; // consume backslash
+    const escapeChar = source[cursor];
+    switch(escapeChar) {
+      case 'n': value = '\n'; break;
+      case 't': value = '\t'; break;
+      case 'r': value = '\r'; break;
+      case '\\': value = '\\'; break;
+      case "'": value = "'"; break;
+      default: value = escapeChar!; break;
+    }
+    cursor++;
+  } else {
+    value = source[cursor]!;
+    cursor++;
+  }
+
+  if (cursor >= source.length || source[cursor] !== "'") {
+    throw new ParseError("Unclosed char literal.", startLine);
+  }
+
+  cursor++; // consume closing quote
+  tokens.push({ type: TokenType.CharLiteral, value, line: startLine });
+  continue;
+}
+
 
     throw new ParseError(`Unexpected character '${char}'`, line);
   }

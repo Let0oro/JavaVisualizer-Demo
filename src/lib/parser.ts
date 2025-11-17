@@ -214,13 +214,31 @@ export class Parser {
 
   private parseAssignmentExpr(): AST.Expr {
     const left = this.parseLogicalOrExpr();
+
+    // Regular assignment: =
     if (this.at()?.type === TokenType.Equals) {
       this.eat();
       const value = this.parseAssignmentExpr();
       return { kind: "AssignmentExpr", assignee: left, value, line: left.line };
     }
+
+    // ✅ NUEVO: Compound assignment: +=, -=, *=, /=
+    if ([TokenType.PlusEquals, TokenType.MinusEquals, TokenType.StarEquals, TokenType.SlashEquals].includes(this.at()?.type!)) {
+      const opToken = this.eat()!;
+      const value = this.parseAssignmentExpr();
+      return {
+        kind: "CompoundAssignmentExpr",
+        assignee: left,
+        operator: opToken.value as "+=" | "-=" | "*=" | "/=",
+        value,
+        line: left.line
+      };
+    }
+
     return left;
   }
+
+
 
   private parseLogicalOrExpr(): AST.Expr {
     let left = this.parseLogicalAndExpr();
