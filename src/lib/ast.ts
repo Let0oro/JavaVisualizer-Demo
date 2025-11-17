@@ -1,4 +1,3 @@
-// ast.ts
 export interface Node { kind: string, line: number, start?: number, end?: number }
 
 export interface Program extends Node { kind: "Program"; body: Stmt[] }

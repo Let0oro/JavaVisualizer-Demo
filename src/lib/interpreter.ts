@@ -1,4 +1,3 @@
-// interpreter.ts
 import type { ExecutionStep, HeapRef, HeapValue } from "@/types";
 import * as AST from "./ast";
 import { Environment, BREAK_SENTINEL, CONTINUE_SENTINEL, ReturnSentinel, type StackFrame } from "./environment";

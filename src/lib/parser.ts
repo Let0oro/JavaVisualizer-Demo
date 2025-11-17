@@ -1,4 +1,3 @@
-// parser.ts
 import { type Token, TokenType } from "./lexer";
 import * as AST from "./ast"; // importa tipos del AST
 import { ParseError } from "./errors";

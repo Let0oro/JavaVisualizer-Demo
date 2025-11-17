@@ -1,4 +1,3 @@
-// environment.ts
 export class Environment {
   public parent?: Environment;
   private variables: Map<string, any>;
