@@ -9,7 +9,19 @@ import { useExecutionLogic } from './hooks/useExecutionLogic';
 
 const defaultCode = `class Main {
   static void main() {
-      System.out.println(5);
+    // Test 1: String concatenation
+    String salida = "";
+    salida += "*";
+    salida += " ";
+    System.out.println(salida);  // Debería imprimir "* "
+
+    // Test 2: Numeric operations
+    int x = 5;
+    x += 3;   // x = 8
+    x -= 2;   // x = 6
+    x *= 2;   // x = 12
+    x /= 3;   // x = 4
+    System.out.println(x);  // Debería imprimir 4
   }
 }
 `;

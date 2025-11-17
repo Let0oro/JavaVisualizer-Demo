@@ -369,7 +369,57 @@ export class Interpreter {
         this.addTrace(expr.line);
         return currentValue;
       }
+      case "CompoundAssignmentExpr": {
+        const expr = node as AST.CompoundAssignmentExpr;
 
+        // Obtener el valor actual de la variable
+        const currentValue = this.evaluate(expr.assignee);
+
+        // Evaluar el lado derecho
+        const rightValue = this.evaluate(expr.value);
+
+        // Aplicar la operación compuesta
+        let newValue: any;
+        switch (expr.operator) {
+          case "+=":
+            // Soporte especial para strings (concatenación)
+            if (typeof currentValue === "string" || typeof rightValue === "string") {
+              newValue = String(currentValue) + String(rightValue);
+            } else {
+              newValue = currentValue + rightValue;
+            }
+            break;
+          case "-=":
+            newValue = currentValue - rightValue;
+            break;
+          case "*=":
+            newValue = currentValue * rightValue;
+            break;
+          case "/=":
+            if (rightValue === 0) throw new Error("Division by zero");
+            newValue = currentValue / rightValue;
+            break;
+        }
+
+        this.addTrace(expr.line);
+
+        // Asignar el nuevo valor (usando la MISMA lógica que AssignmentExpr)
+        if (expr.assignee.kind === "Identifier") {
+          return this.currentEnv.assign((expr.assignee as AST.Identifier).symbol, newValue);
+        } else if (expr.assignee.kind === "MemberExpr" && (expr.assignee as AST.MemberExpr).computed) {
+          // Array assignment: arr[i] += value
+          const memExpr = expr.assignee as AST.MemberExpr;
+          const ref = this.evaluate(memExpr.object) as HeapRef;
+          const index = this.evaluate(memExpr.property);
+          const heapObj = this.heap[ref.__ref__];
+          if (heapObj?.type === 'array') {
+            heapObj.values[index] = newValue;
+          }
+          return newValue;
+        }
+
+        return newValue;
+      }
       default:
         console.error("Unhandled AST node:", node);
         throw new Error(`Unsupported language feature: ${(node as AST.Node).kind}`);

@@ -14,10 +14,12 @@ import type { ExecutionStep } from "@/types";
 
 
   // src/lib/api.ts
-  import { parse } from "java-parser";
-  import { CSTToASTConverter } from "./cstToAst";
+  // import { parse } from "java-parser";
+  // import { CSTToASTConverter } from "./cstToAst";
   import { Interpreter } from "./interpreter";
   import type { ExecutionStep } from "@/types";
+import { tokenize } from "./lexer";
+import { Parser } from "./parser";
 
   export const interpretJavaCode = async (code: string): Promise<ExecutionStep[]> => {
     console.log('🔧 Starting Java code interpretation...');
@@ -25,12 +27,16 @@ import type { ExecutionStep } from "@/types";
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         try {
-          console.log('📝 Parsing code with java-parser...');
-          const cst = parse(code);
+          // console.log('📝 Parsing code with java-parser...');
+          // const cst = parse(code);
 
-          console.log('🔄 Converting CST to AST...');
-          const converter = new CSTToASTConverter();
-          const ast = converter.convert(cst);
+          // console.log('🔄 Converting CST to AST...');
+          // const converter = new CSTToASTConverter();
+          // const ast = converter.convert(cst);
+
+          const tokens = tokenize(code);
+          const parser = new Parser(tokens);
+          const ast = parser.parse();
 
           console.log('▶️  Running interpreter...');
           const interpreter = new Interpreter();
