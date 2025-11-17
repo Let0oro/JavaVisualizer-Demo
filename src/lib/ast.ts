@@ -32,6 +32,10 @@ export interface ArrayCreationExpr extends Node { kind: "ArrayCreationExpr", typ
 export interface PostfixExpr extends Node { kind: "PostfixExpr", operator: string, argument: Identifier };
 
 
-export type Expr = BinaryExpr | LogicalExpr | UnaryExpr | Identifier | NumericLiteral | DoubleLiteral | BooleanLiteral | StringLiteral | AssignmentExpr | MemberExpr | CallExpr | NewExpr | ArrayCreationExpr | PostfixExpr;
+export interface NullLiteral extends Node {
+  kind: "NullLiteral";
+}
+
+export type Expr = BinaryExpr | LogicalExpr | UnaryExpr | Identifier | NumericLiteral | DoubleLiteral | BooleanLiteral | StringLiteral | AssignmentExpr | NullLiteral | MemberExpr | CallExpr | NewExpr | ArrayCreationExpr | PostfixExpr;
 
 export type Stmt = ClassDeclaration | MethodDeclaration | VariableDeclaration | ExpressionStatement | BlockStatement | ForStatement | WhileStatement | DoWhileStatement | IfStatement | ReturnStatement | BreakStatement | ContinueStatement;
