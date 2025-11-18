@@ -113,6 +113,10 @@ export function useExecutionLogic(defaultCode: string) {
   // ------------------------
   const changedHeapIds = useChangedHeapIds(currentStep, prevStep);
 
+  const handleTogglePanel = useCallback((panel: keyof typeof visiblePanels) => {
+    setVisiblePanels(prev => ({ ...prev, [panel]: !prev[panel] }));
+  }, []);
+
   return {
     code, setCode,
     executionTrace, currentStepIndex, setCurrentStepIndex,
@@ -122,6 +126,7 @@ export function useExecutionLogic(defaultCode: string) {
     visiblePanels, setVisiblePanels,
     notification, setNotification,
     handleExecute, handlePause, handleResume, handleNextStep, handlePrevStep, handleReset,
+    handleTogglePanel,  // ← AGREGAR ESTA LÍNEA
     isExecutionStarted: executionTrace.length > 0,
     isExecutionFinished,
     consoleOutput,

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ControlsProps {
@@ -18,14 +17,26 @@ interface ControlsProps {
   onSpeedChange: (speed: number) => void;
 }
 
-const Button: React.FC<React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>> = ({ children, ...props }) => (
-  <button
-    {...props}
-    className="flex items-center justify-center gap-2 px-4 py-2 rounded-md font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    {children}
-  </button>
-);
+const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' }> = ({
+  children,
+  variant = 'secondary',
+  className = '',
+  ...props
+}) => {
+  const baseStyles = 'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900';
+
+  const variants = {
+    primary: 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white shadow-lg shadow-blue-500/30 focus:ring-blue-500',
+    secondary: 'bg-gray-700/80 hover:bg-gray-600/80 text-gray-200 border border-gray-600/50 focus:ring-gray-500',
+    ghost: 'bg-transparent hover:bg-gray-700/50 text-gray-300 focus:ring-gray-500',
+  };
+
+  return (
+    <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
+      {children}
+    </button>
+  );
+};
 
 export const Controls: React.FC<ControlsProps> = ({
   onExecute,
@@ -44,96 +55,149 @@ export const Controls: React.FC<ControlsProps> = ({
   onSpeedChange
 }) => {
   const PlayIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
     </svg>
   );
 
   const PauseIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
     </svg>
   );
 
   const PrevIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M8.447 4.818A1 1 0 007 5.5v9a1 1 0 001.555.832l6-4.5a1 1 0 000-1.664l-6-4.5z" transform="matrix(-1 0 0 1 21 0)" />
-      <path d="M4 5h1v10H4a1 1 0 01-1-1V6a1 1 0 011-1z" />
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
     </svg>
   );
-  
+
   const NextIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M11.553 4.818A1 1 0 0113 5.5v9a1 1 0 01-1.555.832l-6-4.5a1 1 0 010-1.664l6-4.5z" />
-      <path d="M16 5h-1v10h1a1 1 0 001-1V6a1 1 0 00-1-1z" />
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
   );
 
   const ResetIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
   );
 
   const SpinnerIcon = () => (
-    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   );
-  
+
   return (
-    <div className="bg-gray-800 rounded-lg p-4 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-magenta-500">Controls</h2>
-        <div className="flex gap-2">
+    <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 shadow-xl backdrop-blur-sm">
+      <div className="flex flex-col gap-4">
+        {/* Main Controls */}
+        <div className="flex items-center gap-3">
+          {/* Play/Pause/Resume Button */}
           {isLoading ? (
-              <Button disabled className="bg-yellow-500 text-gray-900 w-36">
-                  <SpinnerIcon /> Executing...
-              </Button>
+            <Button variant="primary" disabled className="flex-1">
+              <SpinnerIcon />
+              <span>Ejecutando...</span>
+            </Button>
           ) : !isExecutionStarted ? (
-            <Button 
-              onClick={onExecute} 
-              className="bg-green-500 text-gray-900 hover:bg-green-400 focus:ring-green-500 w-36"
+            <Button
+              variant="primary"
+              onClick={onExecute}
               disabled={hasSyntaxError}
-              title={hasSyntaxError ? 'Cannot run code with syntax errors' : 'Run code'}
+              className="flex-1"
             >
-              <PlayIcon /> Run
+              <PlayIcon />
+              <span>Ejecutar</span>
             </Button>
           ) : isRunning ? (
-            <Button onClick={onPause} className="bg-yellow-500 text-gray-900 hover:bg-yellow-400 focus:ring-yellow-500 w-36">
-              <PauseIcon /> Pause
+            <Button variant="secondary" onClick={onPause} className="flex-1">
+              <PauseIcon />
+              <span>Pausar</span>
             </Button>
           ) : (
-            <Button onClick={onResume} disabled={isExecutionFinished} className="bg-green-500 text-gray-900 hover:bg-green-400 focus:ring-green-500 w-36">
-              <PlayIcon /> Resume
+            <Button variant="primary" onClick={onResume} disabled={isExecutionFinished} className="flex-1">
+              <PlayIcon />
+              <span>Continuar</span>
             </Button>
           )}
-          <Button onClick={onPrevStep} disabled={!isExecutionStarted || isRunning || currentStepIndex === 0 || isLoading} className="bg-blue-500 text-gray-900 hover:bg-blue-400 focus:ring-blue-500">
-            <PrevIcon /> Prev
+
+          {/* Step Controls */}
+          <Button
+            variant="ghost"
+            onClick={onPrevStep}
+            disabled={!isExecutionStarted || currentStepIndex === 0 || isRunning}
+            title="Paso anterior"
+          >
+            <PrevIcon />
           </Button>
-          <Button onClick={onNextStep} disabled={!isExecutionStarted || isRunning || isExecutionFinished || isLoading} className="bg-blue-500 text-gray-900 hover:bg-blue-400 focus:ring-blue-500">
-            <NextIcon /> Next
+
+          <Button
+            variant="ghost"
+            onClick={onNextStep}
+            disabled={!isExecutionStarted || isExecutionFinished || isRunning}
+            title="Paso siguiente"
+          >
+            <NextIcon />
           </Button>
-          <Button onClick={onReset} disabled={!isExecutionStarted || isLoading} className="bg-red-500 text-gray-900 hover:bg-red-400 focus:ring-red-500">
-            <ResetIcon /> Reset
+
+          {/* Reset Button */}
+          <Button
+            variant="secondary"
+            onClick={onReset}
+            disabled={!isExecutionStarted}
+            title="Reiniciar"
+          >
+            <ResetIcon />
+            <span className="hidden sm:inline">Reiniciar</span>
           </Button>
         </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <label htmlFor="speed-slider" className="font-semibold text-sm text-gray-400 whitespace-nowrap">Execution Delay</label>
-        <input 
-            id="speed-slider"
-            type="range"
-            min="50"
-            max="1500"
-            step="50"
-            value={speed}
-            onChange={(e) => onSpeedChange(Number(e.target.value))}
-            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            disabled={isLoading}
-        />
-        <span className="text-sm font-mono text-cyan-500 w-20 text-center">{speed} ms</span>
+
+        {/* Speed Control */}
+        <div className="flex items-center gap-4 pt-2 border-t border-gray-700/50">
+          <div className="flex items-center gap-2 shrink-0">
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-300">Velocidad</span>
+          </div>
+
+          <div className="flex-1 relative">
+            <input
+              type="range"
+              min="0"
+              max="2000"
+              step="100"
+              value={speed}
+              onChange={(e) => onSpeedChange(Number(e.target.value))}
+              disabled={isLoading}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: `linear-gradient(to right, rgb(6 182 212) 0%, rgb(6 182 212) ${(speed / 2000) * 100}%, rgb(55 65 81) ${(speed / 2000) * 100}%, rgb(55 65 81) 100%)`
+              }}
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Rápido</span>
+              <span>Lento</span>
+            </div>
+          </div>
+
+          <div className="shrink-0 min-w-[60px] text-right">
+            <span className="text-sm font-mono text-cyan-400">{speed}ms</span>
+          </div>
+        </div>
+
+        {/* Error Warning */}
+        {hasSyntaxError && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>Corrige los errores de sintaxis antes de ejecutar</span>
+          </div>
+        )}
       </div>
     </div>
   );

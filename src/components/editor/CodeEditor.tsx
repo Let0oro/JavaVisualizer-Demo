@@ -1,11 +1,10 @@
-
 import type { ExecutionStep } from '@/types';
 import hljs from 'highlight.js/lib/core';
 import java from 'highlight.js/lib/languages/java';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Tooltip } from '@/components';
-hljs.registerLanguage('java', java);
 
+hljs.registerLanguage('java', java);
 
 interface CodeEditorProps {
   code: string;
@@ -16,28 +15,38 @@ interface CodeEditorProps {
   setNotification: (notification: { message: string; type: 'info' | 'success' | 'error' } | null) => void;
 }
 
-const LINE_HEIGHT = 24; // px
-const PADDING = 8; // px, corresponds to p-2 in tailwind
+const LINE_HEIGHT = 22; // Optimized for readability
+const PADDING_TOP = 12;
+const PADDING_HORIZONTAL = 16;
+const LINE_NUMBER_WIDTH = 48; // Fixed width for line numbers
 
 const commonEditorStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    margin: 0,
-    padding: `${PADDING}px`,
-    border: 'none',
-    fontFamily: 'monospace',
-    fontSize: '0.875rem', // Tailwind's text-sm
-    lineHeight: `${LINE_HEIGHT}px`,
-    letterSpacing: 'normal', // Explicitly set to prevent browser default inconsistencies
-    whiteSpace: 'pre',
-    boxSizing: 'border-box',
-    background: 'transparent',
+  position: 'absolute',
+  top: 0,
+  left: LINE_NUMBER_WIDTH,
+  right: 0,
+  bottom: 0,
+  margin: 0,
+  padding: `${PADDING_TOP}px ${PADDING_HORIZONTAL}px`,
+  border: 'none',
+  fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
+  fontSize: '14px',
+  lineHeight: `${LINE_HEIGHT}px`,
+  letterSpacing: '0.02em',
+  whiteSpace: 'pre',
+  boxSizing: 'border-box',
+  background: 'transparent',
+  tabSize: 2, // Better for Java
 };
 
-export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, currentStep, disabled, syntaxError, setNotification }) => {
+export const CodeEditor: React.FC<CodeEditorProps> = ({
+  code,
+  onCodeChange,
+  currentStep,
+  disabled,
+  syntaxError,
+  setNotification
+}) => {
   const {
     lineNumber: currentLine,
     highlightedRegion,
@@ -49,54 +58,47 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
   const preRef = useRef<HTMLPreElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const hljsRef = useRef<any>(null); // To store the hljs instance
+  const hljsRef = useRef<typeof hljs | null>(null);
   const [isHljsReady, setIsHljsReady] = useState(false);
-  const [highlightedCodeHtml, setHighlightedCodeHtml] = useState<string>('');
-
+  const [highlightedCodeHtml, setHighlightedCodeHtml] = useState('');
   const [errorTooltip, setErrorTooltip] = useState<{
     visible: boolean;
     content: string;
     x: number;
     y: number;
   }>({ visible: false, content: '', x: 0, y: 0 });
-
   const [measurement, setMeasurement] = useState({ left: 0, width: 0 });
   const prefixRef = useRef<HTMLSpanElement>(null);
   const highlightRef = useRef<HTMLSpanElement>(null);
-
   const userInteractingRef = useRef(false);
 
-  // Effect to load Highlight.js dynamically and reliably.
+  // Load Highlight.js
   useEffect(() => {
     let isMounted = true;
-    setNotification({ message: 'Cargando resaltador de sintaxis...', type: 'info' });
-
     try {
       hljs.registerLanguage('java', java);
       if (isMounted) {
         hljsRef.current = hljs;
         setIsHljsReady(true);
-        setNotification({ message: 'Resaltador de sintaxis cargado.', type: 'success' });
       }
     } catch (error) {
       console.error("Syntax highlighting error:", error);
       if (isMounted) {
-        setNotification({ message: 'Error al cargar el resaltador de sintaxis. El coloreado no funcionará.', type: 'error' });
+        setNotification({
+          message: 'Error al cargar el resaltador de sintaxis',
+          type: 'error'
+        });
       }
     }
-
     return () => { isMounted = false; };
   }, [setNotification]);
 
-
-  // Generate the HTML to display based on hljs readiness and code changes
+  // Generate highlighted HTML
   useEffect(() => {
     let html;
     if (isHljsReady && hljsRef.current) {
       html = hljsRef.current.highlight(code, { language: 'java', ignoreIllegals: true }).value;
     } else {
-      // Fallback to plain, escaped text if hljs is not ready to prevent invisible code
       const escapedCode = code
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -105,14 +107,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
         .replace(/'/g, '&#039;');
       html = escapedCode;
     }
-    // Add a trailing newline for consistent final line rendering and scrolling
     setHighlightedCodeHtml(html + '\n');
   }, [code, isHljsReady]);
 
   const lineContent = (currentLine && code.split('\n')[currentLine - 1]) || '';
-  const prefix = (currentLine && highlightedRegion) ? lineContent.substring(0, highlightedRegion.start) : '';
-  const highlightText = (currentLine && highlightedRegion) ? lineContent.substring(highlightedRegion.start, highlightedRegion.end) : '';
+  const prefix = (currentLine && highlightedRegion)
+    ? lineContent.substring(0, highlightedRegion.start)
+    : '';
+  const highlightText = (currentLine && highlightedRegion)
+    ? lineContent.substring(highlightedRegion.start, highlightedRegion.end)
+    : '';
 
+  // Measure highlight position
   useEffect(() => {
     if (highlightedRegion && prefixRef.current && highlightRef.current) {
       setMeasurement({
@@ -122,31 +128,26 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
     }
   }, [prefix, highlightText, highlightedRegion, code, currentLine]);
 
-  // Effect for auto-scrolling
+  // Auto-scroll to current line
   useEffect(() => {
     if (currentLine && textareaRef.current && !userInteractingRef.current) {
       const editor = textareaRef.current;
-      const editorViewTop = editor.scrollTop;
-      const editorViewBottom = editor.scrollTop + editor.clientHeight;
-
-      const lineTop = ((currentLine - 1) * LINE_HEIGHT) + PADDING;
+      const lineTop = ((currentLine - 1) * LINE_HEIGHT) + PADDING_TOP;
       const lineBottom = lineTop + LINE_HEIGHT;
+      const viewTop = editor.scrollTop;
+      const viewBottom = viewTop + editor.clientHeight;
 
-      const isLineVisible = lineBottom > editorViewTop && lineTop < editorViewBottom;
-
-      if (!isLineVisible) {
-          const targetScrollTop = lineTop - (editor.clientHeight / 2) + (LINE_HEIGHT / 2);
-          editor.scrollTop = targetScrollTop;
+      if (lineBottom > viewBottom || lineTop < viewTop) {
+        const targetScroll = lineTop - (editor.clientHeight / 2) + (LINE_HEIGHT / 2);
+        editor.scrollTop = Math.max(0, targetScroll);
       }
     }
   }, [currentLine]);
 
   const handleScroll = useCallback(() => {
-    // When execution is running, any manual scroll disables auto-scrolling.
     if (disabled) {
       userInteractingRef.current = true;
-      // Re-enable auto-scrolling after a delay of user inactivity
-      setTimeout(() => { userInteractingRef.current = false }, 2000);
+      setTimeout(() => { userInteractingRef.current = false; }, 2000);
     }
 
     if (textareaRef.current && preRef.current && lineNumbersRef.current) {
@@ -157,67 +158,119 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
     }
   }, [disabled]);
 
-  const handleEditorMouseMove = (e: React.MouseEvent) => {
+  const handleEditorMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!syntaxError || !scrollContainerRef.current || !textareaRef.current) {
-      if (errorTooltip.visible) hideErrorTooltip();
+      if (errorTooltip.visible) setErrorTooltip(prev => ({ ...prev, visible: false }));
       return;
     }
 
     const container = scrollContainerRef.current;
     const rect = container.getBoundingClientRect();
-    // Adjust for container scroll position and top padding to get correct line
-    const relativeY = e.clientY - rect.top + textareaRef.current.scrollTop - PADDING;
+    const relativeY = e.clientY - rect.top + textareaRef.current.scrollTop - PADDING_TOP;
     const hoverLine = Math.floor(relativeY / LINE_HEIGHT) + 1;
 
     if (hoverLine === syntaxError.line) {
-      setErrorTooltip({ visible: true, content: syntaxError.message, x: e.clientX, y: e.clientY });
+      setErrorTooltip({
+        visible: true,
+        content: syntaxError.message,
+        x: e.clientX,
+        y: e.clientY
+      });
     } else {
       if (errorTooltip.visible) {
-        hideErrorTooltip();
+        setErrorTooltip(prev => ({ ...prev, visible: false }));
       }
     }
   };
 
   const handleEditorMouseLeave = () => {
-    hideErrorTooltip();
-  };
-
-  const hideErrorTooltip = () => {
     setErrorTooltip(prev => ({ ...prev, visible: false }));
   };
 
   const lineCount = code.split('\n').length;
 
   const highlightColor = event === 'allocation'
-    ? 'bg-magenta-500/40'
+    ? 'bg-purple-500/25'
     : event === 'return'
-    ? 'bg-cyan-500/40'
-    : 'bg-yellow-500/40';
+    ? 'bg-cyan-500/25'
+    : 'bg-amber-400/30';
+
+  // Handle Tab key for indentation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = e.currentTarget.selectionStart;
+      const end = e.currentTarget.selectionEnd;
+      const newCode = code.substring(0, start) + '  ' + code.substring(end);
+      onCodeChange(newCode);
+
+      // Restore cursor position after React re-render
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2;
+        }
+      }, 0);
+    }
+  };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 grow flex flex-col h-[60vh] relative">
-      <h2 className="text-lg font-semibold mb-2 text-magenta-500">Editor de Código</h2>
+    <div className="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-700/50 shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+          <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+          <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+          <span className="ml-3 text-sm font-medium text-gray-300">Main.java</span>
+        </div>
+        {syntaxError && (
+          <div className="flex items-center gap-2 text-red-400 text-sm">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>Línea {syntaxError.line}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Editor Container */}
       <div
-        className="grow flex relative min-h-0"
         ref={scrollContainerRef}
+        className="relative flex-1 overflow-hidden"
         onMouseMove={handleEditorMouseMove}
         onMouseLeave={handleEditorMouseLeave}
       >
+        {/* Line Numbers */}
         <div
           ref={lineNumbersRef}
-          className="text-right pr-4 pt-2 text-gray-500 select-none overflow-hidden"
-          style={{ lineHeight: `${LINE_HEIGHT}px` }}
-          aria-hidden="true"
+          className="absolute left-0 top-0 bottom-0 overflow-hidden select-none bg-gray-800/40"
+          style={{
+            width: LINE_NUMBER_WIDTH,
+            paddingTop: PADDING_TOP,
+            paddingBottom: PADDING_TOP,
+          }}
         >
           {Array.from({ length: lineCount }, (_, i) => {
             const lineNumber = i + 1;
             const isErrorLine = syntaxError && syntaxError.line === lineNumber;
             const isCurrentLine = currentLine === lineNumber;
+
             return (
               <div
-                key={i}
-                className={`relative transition-colors duration-100 flex items-center justify-end ${isErrorLine ? 'text-red-500 font-bold' : ''} ${isCurrentLine ? 'bg-gray-700/80 rounded px-1 text-gray-200' : ''}`}
-                style={{ height: `${LINE_HEIGHT}px` }}
+                key={lineNumber}
+                className={`
+                  text-right pr-3 font-mono text-xs transition-colors
+                  ${isErrorLine
+                    ? 'text-red-400 font-semibold'
+                    : isCurrentLine
+                    ? 'text-amber-400 font-semibold'
+                    : 'text-gray-500'
+                  }
+                `}
+                style={{
+                  height: LINE_HEIGHT,
+                  lineHeight: `${LINE_HEIGHT}px`,
+                }}
               >
                 {lineNumber}
               </div>
@@ -225,96 +278,122 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ code, onCodeChange, curr
           })}
         </div>
 
-        <div className="relative grow">
-          <textarea
-            ref={textareaRef}
-            value={code}
-            onChange={(e) => onCodeChange(e.target.value)}
-            spellCheck="false"
-            wrap="off"
-            readOnly={disabled}
-            aria-label="Code Editor"
-            onScroll={handleScroll}
+        {/* Syntax Highlighted Background */}
+        <pre
+          ref={preRef}
+          className="hljs absolute overflow-hidden pointer-events-none select-none"
+          style={{
+            ...commonEditorStyle,
+            color: '#a9b1d6',
+            letterSpacing: '0.05rem',
+            zIndex: 1,
+          }}
+          aria-hidden="true"
+        >
+          <code dangerouslySetInnerHTML={{ __html: highlightedCodeHtml }} />
+        </pre>
+
+        {/* Editable Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={code}
+          onChange={(e) => onCodeChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          spellCheck="false"
+          autoCapitalize="off"
+          autoComplete="off"
+          autoCorrect="off"
+          wrap="off"
+          readOnly={disabled}
+          placeholder="// Escribe tu código Java aquí..."
+          aria-label="Editor de Código Java"
+          onScroll={handleScroll}
+          className={`
+            absolute outline-none resize-none
+            ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-text'}
+          `}
+          style={{
+            ...commonEditorStyle,
+            color: 'transparent',
+            caretColor: '#e0af68',
+            zIndex: 10,
+            overflow: 'auto',
+          }}
+        />
+
+        {/* Current Line Highlight */}
+        {currentLine && (
+          <div
+            className={`absolute pointer-events-none ${highlightColor} transition-all duration-200`}
             style={{
-                ...commonEditorStyle,
-                color: 'transparent',
-                caretColor: '#e0af68', // yellow-500
-                zIndex: 10,
-                resize: 'none',
-                overflow: 'auto',
+              left: 0,
+              right: 0,
+              top: `${(currentLine - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
+              height: LINE_HEIGHT,
+              zIndex: 2,
             }}
           />
-          <pre
-            ref={preRef}
-            aria-hidden="true"
-            className="code-display"
+        )}
+
+        {/* Highlighted Region (expression/token) */}
+        {currentLine && highlightedRegion && measurement.width > 0 && (
+          <div
+            className="absolute pointer-events-none bg-amber-300/40 rounded transition-all duration-150 ring-1 ring-amber-400/60"
             style={{
-                ...commonEditorStyle,
-                pointerEvents: 'none',
-                overflow: 'hidden',
+              top: `${(currentLine - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
+              left: LINE_NUMBER_WIDTH + PADDING_HORIZONTAL + measurement.left,
+              width: measurement.width,
+              height: LINE_HEIGHT,
+              zIndex: 3,
+            }}
+          />
+        )}
+
+        {/* Error Line Indicator */}
+        {syntaxError && (
+          <div
+            className="absolute left-0 w-1 bg-red-500 pointer-events-none"
+            style={{
+              top: `${(syntaxError.line - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
+              height: LINE_HEIGHT,
+              zIndex: 4,
+            }}
+          />
+        )}
+
+        {/* Loop State Badges */}
+        {activeLoops?.map((loop, idx) => (
+          <div
+            key={idx}
+            className="absolute right-4 px-2 py-0.5 bg-blue-500/90 text-white text-xs font-mono rounded shadow-lg pointer-events-none z-20"
+            style={{
+              top: `${(loop.lineNumber - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
             }}
           >
-            {/* Overlays are positioned relative to this <pre> element */}
-            {currentLine && (
-                <div
-                  className="absolute top-0 left-0 w-full bg-gray-700/50 pointer-events-none transition-transform duration-100 ease-out z-0"
-                  style={{
-                    transform: `translateY(${(currentLine - 1) * LINE_HEIGHT}px)`,
-                    height: `${LINE_HEIGHT}px`,
-                  }}
-                />
-            )}
-            {currentLine && highlightedRegion && measurement.width > 0 && (
-              <div
-                className={`absolute top-0 rounded pointer-events-none z-0 transition-all duration-100 ease-out ${highlightColor}`}
-                style={{
-                  transform: `translateY(${(currentLine - 1) * LINE_HEIGHT}px)`,
-                  left: `${measurement.left}px`,
-                  width: `${measurement.width}px`,
-                  height: `${LINE_HEIGHT}px`,
-                }}
-              />
-            )}
-            {syntaxError && (
-              <div
-                className="absolute top-0 left-0 w-full pointer-events-none z-0"
-                style={{
-                  transform: `translateY(${(syntaxError.line - 1) * LINE_HEIGHT}px)`,
-                  height: `${LINE_HEIGHT}px`,
-                  borderBottom: `2px dotted ${'#f7768e'}`, // red-500
-                }}
-              />
-            )}
-            {activeLoops?.map(loop => (
-               <div
-                  key={loop.lineNumber}
-                  className="absolute right-0 bg-cyan-500/30 text-cyan-200 text-xs px-2 py-0.5 rounded-full pointer-events-none z-20"
-                  style={{
-                      transform: `translateY(${(loop.lineNumber - 1) * LINE_HEIGHT + 4}px)`
-                  }}
-               >
-                  {loop.state}
-               </div>
-            ))}
-            <code
-                className="language-java block relative"
-                dangerouslySetInnerHTML={{ __html: highlightedCodeHtml }}
-            >
-            </code>
-          </pre>
+            {loop.state}
+          </div>
+        ))}
+
+        {/* Measurement Spans (hidden, used for calculating positions) */}
+        <div className="absolute opacity-0 pointer-events-none" aria-hidden="true">
+          <span ref={prefixRef} style={{ fontFamily: commonEditorStyle.fontFamily, fontSize: commonEditorStyle.fontSize }}>
+            {prefix.replace(/ /g, '\u00a0')}
+          </span>
+          <span ref={highlightRef} style={{ fontFamily: commonEditorStyle.fontFamily, fontSize: commonEditorStyle.fontSize }}>
+            {highlightText.replace(/ /g, '\u00a0')}
+          </span>
         </div>
       </div>
-       <Tooltip
-        visible={errorTooltip.visible}
-        content={errorTooltip.content}
-        x={errorTooltip.x}
-        y={errorTooltip.y}
-      />
-      {/* Measurement Spans */}
-      <div className="absolute top-0 left-0 invisible p-2" style={{ fontFamily: 'monospace', fontSize: '0.875rem', lineHeight: `${LINE_HEIGHT}px`, left: '60px' }} aria-hidden="true">
-        <span ref={prefixRef}>{prefix.replace(/ /g, '\u00a0')}</span>
-        <span ref={highlightRef}>{highlightText.replace(/ /g, '\u00a0')}</span>
-      </div>
+
+      {/* Error Tooltip */}
+      {errorTooltip.visible && (
+        <Tooltip
+          content={errorTooltip.content}
+          x={errorTooltip.x}
+          y={errorTooltip.y}
+          visible={errorTooltip.visible}
+        />
+      )}
     </div>
   );
 };
