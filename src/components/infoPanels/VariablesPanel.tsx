@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { type HeapValue, isHeapRef } from '@/types';
+import { isHeapRef } from '@/types';
 
 interface VariablesPanelProps {
   variables: Record<string, any>;

@@ -6,6 +6,7 @@ export interface HighlightedRegion {
 
 // Represents a reference to a value on the heap
 export interface HeapRef {
+  [x: string]: any;
   __ref__: string;
 }
 
