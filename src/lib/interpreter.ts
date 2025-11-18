@@ -12,6 +12,7 @@ export class Interpreter {
   private globalEnv = new Environment();
   private currentEnv = this.globalEnv;
   private callStack: StackFrame[] = [];
+  private allDeclaredVariables = new Set<string>();
 
   public run(ast: AST.Program): ExecutionStep[] {
     // 🔧 FIX: Inicializar System como built-in en el entorno global
@@ -39,9 +40,21 @@ export class Interpreter {
 
   private addTrace(line: number, event?: ExecutionStep['event']) {
     if(this.trace.length > MAX_STEPS) throw new Error(`Execution step limit reached (${MAX_STEPS}).`);
+    const currentVars = this.currentEnv.getSnapshot();
+    const allVariables: Record<string, any> = {};
+
+    this.allDeclaredVariables.forEach(varName => {
+      try {
+        // Intenta obtener el valor del scope actual
+        allVariables[varName] = this.currentEnv.lookup(varName);
+      } catch {
+        // Si no existe en el scope actual, marca como "not-declared"
+        allVariables[varName] = { _status: 'not-declared' };
+      }
+    });
     this.trace.push({
       lineNumber: line,
-      variables: this.currentEnv.getSnapshot(),
+      variables: allVariables,
       heap: JSON.parse(JSON.stringify(this.heap)),
       callStack: this.callStack.map(f => ({ methodName: f.methodName, line: f.line })),
       event,
@@ -66,11 +79,12 @@ export class Interpreter {
 
       case "VariableDeclaration": {
         const decl = node as AST.VariableDeclaration;
-        let value;
+        let value: any;
         if (decl.value) value = this.evaluate(decl.value);
         else if (decl.type === 'int' || decl.type === 'double') value = 0;
         else if (decl.type === 'boolean') value = false;
         else value = null;
+        this.allDeclaredVariables.add(decl.name);
         this.addTrace(decl.line);
         return this.currentEnv.declare(decl.name, value);
       }
