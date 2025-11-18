@@ -1,21 +1,4 @@
-# bun-react-tailwind-template
+# Java viualizator
 
-To install dependencies:
+An online playground thats allow you to code basics of java.
 
-```bash
-bun install
-```
-
-To start a development server:
-
-```bash
-bun dev
-```
-
-To run for production:
-
-```bash
-bun start
-```
-
-This project was created using `bun init` in bun v1.3.2. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
