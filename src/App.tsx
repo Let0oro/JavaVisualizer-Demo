@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   CodeEditor,
   CstmNotification,
@@ -7,17 +7,18 @@ import {
   HeapPanel,
   VariablesPanel,
   Controls,
-  WindowVisibilityControl
+  WindowVisibilityControl,
+  FileTabs
 } from '@/components';
 import "./index.css";
 import type { ExecutionStep } from './types';
 import { useExecutionLogic } from './hooks/useExecutionLogic';
+import { useFileManager, type JavaFile } from './hooks/useFileManager';
 
 const defaultCode = `class Main {
   static void main() {
     int alto = 5;
     int ancho = 5;
-
     String salida = "";
 
     for (int i = 0; i < alto; i++) {
@@ -25,8 +26,7 @@ const defaultCode = `class Main {
       for (int j = 0; j < ancho; j++) {
         if (j == i || j == (ancho-1-i)) {
           salida += "*";
-        }
-        else {
+        } else {
           salida += " ";
         }
       }
@@ -35,144 +35,164 @@ const defaultCode = `class Main {
   }
 }`;
 
+const initialFile: JavaFile = {
+  id: 'main-file',
+  name: 'Main.java',
+  content: defaultCode,
+  isMain: true,
+};
+
 export const App: React.FC = () => {
-  const exec = useExecutionLogic(defaultCode);
+  const fileManager = useFileManager(initialFile);
+  const [execCode, setExecCode] = useState(fileManager.getCombinedCode());
+  const exec = useExecutionLogic(execCode);
+
+  // Guardar setCode en un ref para evitar problemas de dependencias
+  const setCodeRef = useRef(exec.setCode);
+
+  useEffect(() => {
+    if (!exec.currentStep?.lineNumber || !exec.isRunning) return;
+
+    const resolved = fileManager.resolveLineToFile(exec.currentStep.lineNumber);
+
+    if (resolved.file.id !== fileManager.activeFileId) {
+      // Pequeño delay para suavizar la transición
+      const timeout = setTimeout(() => {
+        console.log(`🔄 Switching to file: ${resolved.file.name} (line ${resolved.localLine})`);
+        fileManager.setActiveFileId(resolved.file.id);
+      }, 50); // 50ms delay
+
+      return () => clearTimeout(timeout);
+    }
+  }, [exec.currentStep?.lineNumber, exec.isRunning, fileManager]);
+
+  useEffect(() => {
+    setCodeRef.current = exec.setCode;
+  }, [exec.setCode]);
+
+  useEffect(() => {
+    const combinedCode = fileManager.getCombinedCode();
+    setExecCode(combinedCode);
+    setCodeRef.current(combinedCode);
+  }, [fileManager.files]);
+
+  // Handle adding new file with prompt
+  const handleAddFile = () => {
+    const fileName = prompt('Enter file name:', 'NewClass');
+    // console.log('🔍 Code type:', typeof setCodeRef);
+    // console.log('🔍 Code value:', setCodeRef);
+    if (fileName) {
+      fileManager.addFile(fileName);
+    }
+  };
+  const handleCodeChange = (newCode: string) => {
+    fileManager.updateFileContent(fileManager.activeFileId, newCode);
+    // La sincronización ocurre automáticamente por el useEffect
+  };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-700/50 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                    JavaVis
-                  </h1>
-                  <p className="text-xs text-gray-400">Visualizador de código Java</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-400">
-                Paso <span className="font-mono text-cyan-400">{exec.currentStepIndex + 1}</span> / <span className="font-mono">{exec.executionTrace.length || 1}</span>
-              </div>
-            </div>
+    <div className="min-h-screen bg-linear-to-br from-gray-900 via-slate-900 to-gray-900 text-gray-100 p-4">
+      <div className="max-w-[1800px] mx-auto">
+        {/* Header */}
+        <header className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              JavaVis
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">Java Code Visualizer</p>
           </div>
-        </div>
-      </header>
+          <WindowVisibilityControl
+            visiblePanels={exec.visiblePanels}
+            onTogglePanel={exec.handleTogglePanel}
+          />
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-          {/* Left Panel - Code Editor */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="flex-1 min-h-0">
-              <CodeEditor
-                code={exec.code}
-                onCodeChange={exec.setCode}
-                currentStep={exec.currentStep}
-                disabled={exec.isExecutionStarted}
-                syntaxError={exec.syntaxError}
-                setNotification={exec.setNotification}
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 h-[calc(100vh-140px)]">
+          {/* Left Column: Editor + Controls */}
+          <div className="flex flex-col gap-4 min-h-0">
+            {/* Code Editor with Tabs */}
+            <div className="flex-1 flex flex-col overflow-hidden rounded-lg border border-gray-700/50 bg-gray-900 shadow-2xl">
+              {/* File Tabs */}
+              <FileTabs
+                files={fileManager.files}
+                activeFileId={fileManager.activeFileId}
+                onSelectFile={fileManager.setActiveFileId}
+                onCloseFile={fileManager.removeFile}
+                onAddFile={handleAddFile}
+                onRenameFile={fileManager.renameFile}
+                onSetMainFile={fileManager.setMainFile}
               />
+
+              {/* Editor */}
+              <div className="flex-1">
+                <CodeEditor
+                  code={fileManager.activeFile?.content ?? ""}
+                  onCodeChange={handleCodeChange}
+                  currentStep={exec.currentStep}
+                  disabled={exec.isRunning}
+                  syntaxError={exec.syntaxError}
+                  setNotification={exec.setNotification}
+                  resolveLineToFile={fileManager.resolveLineToFile}
+                  activeFile={fileManager.activeFile!}
+                />
+              </div>
             </div>
 
             {/* Controls */}
-            <div className="shrink-0">
-              <Controls
-                onExecute={exec.handleExecute}
-                onPause={exec.handlePause}
-                onResume={exec.handleResume}
-                onNextStep={exec.handleNextStep}
-                onPrevStep={exec.handlePrevStep}
-                onReset={exec.handleReset}
-                isRunning={exec.isRunning}
-                isLoading={exec.isLoading}
-                isExecutionStarted={exec.isExecutionStarted}
-                isExecutionFinished={exec.isExecutionFinished}
-                currentStepIndex={exec.currentStepIndex}
-                hasSyntaxError={!!exec.syntaxError}
-                speed={exec.executionSpeed}
-                onSpeedChange={exec.setExecutionSpeed}
-              />
-            </div>
+            <Controls
+              isRunning={exec.isRunning}
+              isExecutionStarted={exec.isExecutionStarted}
+              isExecutionFinished={exec.isExecutionFinished}
+              currentStepIndex={exec.currentStepIndex}
+              speed={exec.executionSpeed}
+              onExecute={() => exec.handleExecute(fileManager.getCombinedCode())}
+              onPause={exec.handlePause}
+              onResume={exec.handleResume}
+              onNextStep={exec.handleNextStep}
+              onPrevStep={exec.handlePrevStep}
+              onReset={exec.handleReset}
+              onSpeedChange={exec.setExecutionSpeed}
+              isLoading={false}
+              hasSyntaxError={exec.syntaxError !== null}
+            />
           </div>
 
-          {/* Right Panel - Visualization */}
-          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
-            {/* Panel Visibility Controls */}
-            <div className="shrink-0">
-              <WindowVisibilityControl
-                visiblePanels={exec.visiblePanels}
-                onTogglePanel={exec.handleTogglePanel}
+          {/* Right Column: Panels */}
+          <div className="flex flex-col gap-4 min-h-0 overflow-y-auto">
+            {exec.visiblePanels.console && (
+              <ConsolePanel output={exec.consoleOutput ? exec.consoleOutput.split('\n').filter(line => line.trim()) : []} />
+            )}
+
+            {exec.visiblePanels.variables && exec.currentStep && (
+              <VariablesPanel
+                variables={exec.currentStep.variables}
+                changedVariableIds={exec.changedVariables}
               />
-            </div>
+            )}
 
-            {/* Scrollable Panels Container */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 min-h-0 custom-scrollbar">
-              {exec.visiblePanels.variables && (
-                <div className="animate-fadeIn">
-                  <VariablesPanel
-                    variables={exec.currentStep?.variables || {}}
-                    changedVariableIds={exec.changedVariables}
-                  />
-                </div>
-              )}
+            {exec.visiblePanels.heap && exec.currentStep && (
+              <HeapPanel
+                heap={exec.currentStep.heap}
+                changedHeapIds={exec.changedHeapIds}
+              />
+            )}
 
-              {exec.visiblePanels.heap && (
-                <div className="animate-fadeIn">
-                  <HeapPanel
-                    heap={exec.currentStep?.heap || {}}
-                    changedHeapIds={exec.changedHeapIds}
-                  />
-                </div>
-              )}
-
-              {exec.visiblePanels.callStack && (
-                <div className="animate-fadeIn">
-                  <CallStackPanel callStack={exec.currentStep?.callStack || []} />
-                </div>
-              )}
-
-              {exec.visiblePanels.console && (
-                <div className="animate-fadeIn">
-                 <ConsolePanel output={exec.consoleOutput ? exec.consoleOutput.split('\n').filter(line => line.trim()) : []} />
-                </div>
-              )}
-            </div>
+            {exec.visiblePanels.callStack && exec.currentStep && (
+              <CallStackPanel callStack={exec.currentStep.callStack} />
+            )}
           </div>
         </div>
-      </main>
 
-      {/* Notification */}
-      {exec.notification && (
-        <CstmNotification
-          message={exec.notification.message}
-          type={exec.notification.type}
-          onClose={() => exec.setNotification(null)}
-        />
-      )}
-
-      {/* Footer */}
-      {/* <footer className="border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-sm mt-auto">
-        <div className="container mx-auto px-6 py-3">
-          <div className="flex items-center justify-between text-xs text-gray-400">
-            <p>© 2025 JavaVis - Visualizador educativo de Java</p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-cyan-400 transition-colors">Documentación</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors">GitHub</a>
-            </div>
-          </div>
-        </div>
-      </footer> */}
+        {/* Notification */}
+        {exec.notification && (
+          <CstmNotification
+            message={exec.notification.message}
+            type={exec.notification.type}
+            onClose={() => exec.setNotification(null)}
+          />
+        )}
+      </div>
     </div>
   );
 };

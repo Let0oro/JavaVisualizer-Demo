@@ -10,3 +10,4 @@ export { Tooltip } from "./settings/Tooltip";
 export { Controls } from "./settings/Controls";
 
 export { CstmNotification } from "./helpers/Notification"
+export { FileTabs } from './editor/FileTabs';

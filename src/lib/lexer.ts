@@ -23,6 +23,7 @@ export interface Token {
 import { ParseError } from "./errors";
 
 export function tokenize(source: string): Token[] {
+  if (typeof source !== 'string') throw new Error('Parser recibió código no válido');
   const tokens: Token[] = [];
   let line = 1;
   let cursor = 0;
