@@ -213,26 +213,257 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const highlightColor = event === 'allocation'
     ? 'bg-purple-500/25'
     : event === 'return'
-    ? 'bg-cyan-500/25'
-    : 'bg-amber-400/30';
+      ? 'bg-cyan-500/25'
+      : 'bg-amber-400/30';
 
-  // Handle Tab key for indentation
+  // Handle Tab key for indentation + Auto-surround brackets
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
+    const textarea = e.currentTarget;
+    const { selectionStart: start, selectionEnd: end } = textarea;
+    const selectedText = code.substring(start, end);
+    const hasSelection = start !== end;
+
+    // ===== AUTO-SURROUND: When typing opening bracket with selection =====
+    const surroundPairs: Record<string, string> = {
+      '"': '"',
+      "'": "'",
+      '(': ')',
+      '[': ']',
+      '{': '}',
+      '<': '>',
+    };
+
+    const closeChar = surroundPairs[e.key];
+
+    if (hasSelection && closeChar) {
       e.preventDefault();
-      const start = e.currentTarget.selectionStart;
-      const end = e.currentTarget.selectionEnd;
-      const newCode = code.substring(0, start) + '  ' + code.substring(end);
+      const openChar = e.key;
+
+      // Wrap selected text
+      const newCode =
+        code.substring(0, start) +
+        openChar +
+        selectedText +
+        closeChar +
+        code.substring(end);
+
       onCodeChange(newCode);
 
-      // Restore cursor position after React re-render
+      // Position cursor after the inserted opening bracket
       setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2;
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.selectionStart = start + 1;
+          textarea.selectionEnd = start + 1 + selectedText.length;
+          textarea.focus();
         }
       }, 0);
+
+      return;
+    }
+
+    // ===== AUTO-PAIR: When typing opening bracket without selection =====
+    if (!hasSelection && closeChar) {
+      e.preventDefault();
+      const openChar = e.key;
+
+      // Insert pair and position cursor between them
+      const newCode =
+        code.substring(0, start) +
+        openChar +
+        closeChar +
+        code.substring(end);
+
+      onCodeChange(newCode);
+
+      // Position cursor between the pair
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.selectionStart = start + 1;
+          textarea.selectionEnd = start + 1;
+          textarea.focus();
+        }
+      }, 0);
+
+      return;
+    }
+
+    // ===== AUTO-SKIP: Skip over closing bracket if it's already there =====
+    const closingChars = [')', ']', '}', '>', '"', "'"];
+    if (!hasSelection && closingChars.includes(e.key)) {
+      const nextChar = code[start];
+
+      // If next character is the same closing char, skip over it
+      if (nextChar === e.key) {
+        e.preventDefault();
+        setTimeout(() => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            textarea.selectionStart = start + 1;
+            textarea.selectionEnd = start + 1;
+            textarea.focus();
+          }
+        }, 0);
+        return;
+      }
+    }
+
+    // ===== AUTO-DELETE PAIR: When pressing Backspace on an empty pair =====
+    if (e.key === 'Backspace' && !hasSelection && start > 0) {
+      const charBefore = code[start - 1];
+      const charAfter = code[start];
+
+      // Check if we're deleting an empty bracket pair
+      if (charBefore && charBefore in surroundPairs && surroundPairs[charBefore] === charAfter) {
+        e.preventDefault();
+
+        // Delete both characters
+        const newCode =
+          code.substring(0, start - 1) +
+          code.substring(start + 1);
+
+        onCodeChange(newCode);
+
+        setTimeout(() => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            textarea.selectionStart = start - 1;
+            textarea.selectionEnd = start - 1;
+            textarea.focus();
+          }
+        }, 0);
+
+        return;
+      }
+    }
+
+    // ===== TAB INDENTATION =====
+    if (e.key === 'Tab') {
+      e.preventDefault();
+
+      if (hasSelection) {
+        // Tab with selection: Indent/Outdent multiple lines
+        const lines = code.split('\n');
+        const startLine = code.substring(0, start).split('\n').length - 1;
+        const endLine = code.substring(0, end).split('\n').length - 1;
+
+        let newLines = [...lines];
+
+        if (e.shiftKey) {
+          // Shift+Tab: Remove indentation
+          for (let i = startLine; i <= endLine; i++) {
+            const line = newLines[i];
+            if (line?.startsWith('  ')) {
+              newLines[i] = line.substring(2);
+            }
+          }
+        } else {
+          // Tab: Add indentation
+          for (let i = startLine; i <= endLine; i++) {
+            newLines[i] = '  ' + newLines[i];
+          }
+        }
+
+        const newCode = newLines.join('\n');
+        onCodeChange(newCode);
+
+        // Maintain selection
+        setTimeout(() => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            const newStart = newLines.slice(0, startLine).join('\n').length + (startLine > 0 ? 1 : 0);
+            const newEnd = newLines.slice(0, endLine + 1).join('\n').length;
+            textarea.selectionStart = newStart;
+            textarea.selectionEnd = newEnd;
+            textarea.focus();
+          }
+        }, 0);
+      } else {
+        // Tab without selection: Insert spaces
+        const newCode = code.substring(0, start) + '  ' + code.substring(end);
+        onCodeChange(newCode);
+
+        setTimeout(() => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            textarea.selectionStart = start + 2;
+            textarea.selectionEnd = start + 2;
+            textarea.focus();
+          }
+        }, 0);
+      }
+
+      return;
+    }
+
+    // ===== AUTO-INDENT: Smart indentation on Enter =====
+    if (e.key === 'Enter' && !hasSelection) {
+      e.preventDefault();
+
+      // Get current line content
+      const currentLineStart = code.lastIndexOf('\n', start - 1) + 1;
+      const currentLine = code.substring(currentLineStart, start);
+
+      // Calculate current indentation
+      const indentMatch = currentLine.match(/^(\s*)/);
+      const currentIndent = indentMatch && indentMatch[1] ? indentMatch[1] : '';
+
+      // Determine if we need extra indentation
+      const trimmedLine = currentLine.trim();
+      let extraIndent = '';
+
+      // Check if line opens a block (ends with {)
+      if (trimmedLine.endsWith('{')) {
+        extraIndent = '  '; // Add 2 spaces
+      }
+      // Check if line is a case/default statement (ends with :)
+      else if (trimmedLine.endsWith(':') && (trimmedLine.startsWith('case ') || trimmedLine.startsWith('default'))) {
+        extraIndent = '  '; // Add 2 spaces
+      }
+
+      // Check if we should auto-close the block (cursor after { with nothing following)
+      const restOfLine = code.substring(start, currentLineStart + currentLine.length).trim();
+      const shouldAutoClose = trimmedLine.endsWith('{') && restOfLine === '';
+
+      let newCode: string;
+      let newCursorPos: number;
+
+      if (shouldAutoClose) {
+        // Insert new line with indent, then closing brace on next line with original indent
+        newCode =
+          code.substring(0, start) +
+          '\n' + currentIndent + extraIndent +
+          '\n' + currentIndent + ( code.substring(start, start+1) == "}" ? '' : '}' ) +
+          code.substring(end);
+
+        newCursorPos = start + 1 + currentIndent.length + extraIndent.length;
+      } else {
+        // Normal case: just add new line with appropriate indentation
+        newCode =
+          code.substring(0, start) +
+          '\n' + currentIndent + extraIndent +
+          code.substring(end);
+
+        newCursorPos = start + 1 + currentIndent.length + extraIndent.length;
+      }
+
+      onCodeChange(newCode);
+
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        textarea.selectionStart = newCursorPos;
+        textarea.selectionEnd = newCursorPos;
+        textarea.focus();
+      }, 0);
+
+      return;
     }
   };
+
+
 
   return (
     <div className="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-700/50 shadow-2xl">
@@ -253,10 +484,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
         )}
         {errorForCurrentFile && (
-        <div className="error-banner">
-          ⚠️ Error en línea {errorForCurrentFile.line}: {errorForCurrentFile.message}
-        </div>
-      )}
+          <div className="error-banner">
+            ⚠️ Error en línea {errorForCurrentFile.line}: {errorForCurrentFile.message}
+          </div>
+        )}
       </div>
 
       {/* Editor Container */}
@@ -289,8 +520,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                   ${isErrorLine
                     ? 'text-red-400 font-semibold'
                     : isCurrentLine
-                    ? 'text-amber-400 font-semibold'
-                    : 'text-gray-500'
+                      ? 'text-amber-400 font-semibold'
+                      : 'text-gray-500'
                   }
                 `}
                 style={{

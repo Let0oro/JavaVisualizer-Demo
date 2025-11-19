@@ -168,14 +168,14 @@ export const Controls: React.FC<ControlsProps> = ({
             <input
               type="range"
               min="0"
-              max="2000"
-              step="100"
+              max="1000"
+              step="50"
               value={speed}
               onChange={(e) => onSpeedChange(Number(e.target.value))}
               disabled={isLoading}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: `linear-gradient(to right, rgb(6 182 212) 0%, rgb(6 182 212) ${(speed / 2000) * 100}%, rgb(55 65 81) ${(speed / 2000) * 100}%, rgb(55 65 81) 100%)`
+                background: `linear-gradient(to right, rgb(6 182 212) 0%, rgb(6 182 212) ${(speed / 1000) * 100}%, rgb(55 65 81) ${(speed / 1000) * 100}%, rgb(55 65 81) 100%)`
               }}
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
