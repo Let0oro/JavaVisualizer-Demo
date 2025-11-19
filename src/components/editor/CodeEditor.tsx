@@ -1,8 +1,9 @@
 import type { ExecutionStep } from '@/types';
 import hljs from 'highlight.js/lib/core';
 import java from 'highlight.js/lib/languages/java';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip } from '@/components';
+import type { JavaFile } from '@/hooks/useFileManager';
 
 hljs.registerLanguage('java', java);
 
@@ -13,6 +14,8 @@ interface CodeEditorProps {
   disabled: boolean;
   syntaxError: { line: number, message: string } | null;
   setNotification: (notification: { message: string; type: 'info' | 'success' | 'error' } | null) => void;
+  resolveLineToFile?: (globalLine: number) => { file: JavaFile; localLine: number };
+  activeFile: JavaFile;
 }
 
 const LINE_HEIGHT = 22; // Optimized for readability
@@ -45,7 +48,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   currentStep,
   disabled,
   syntaxError,
-  setNotification
+  setNotification,
+  resolveLineToFile,
+  activeFile
 }) => {
   const {
     lineNumber: currentLine,
@@ -71,6 +76,22 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const prefixRef = useRef<HTMLSpanElement>(null);
   const highlightRef = useRef<HTMLSpanElement>(null);
   const userInteractingRef = useRef(false);
+
+  const errorForCurrentFile = useMemo(() => {
+    if (!syntaxError || !resolveLineToFile) return null;
+
+    const resolved = resolveLineToFile(syntaxError.line);
+
+    // Solo mostrar error si pertenece al archivo activo
+    if (resolved.file.id !== activeFile.id) return null;
+
+    return {
+      line: resolved.localLine,
+      message: syntaxError.message,
+      fileName: resolved.file.name,
+    };
+  }, [syntaxError, resolveLineToFile, activeFile]);
+
 
   // Load Highlight.js
   useEffect(() => {
@@ -159,7 +180,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   }, [disabled]);
 
   const handleEditorMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!syntaxError || !scrollContainerRef.current || !textareaRef.current) {
+    if (!errorForCurrentFile || !scrollContainerRef.current || !textareaRef.current) {
       if (errorTooltip.visible) setErrorTooltip(prev => ({ ...prev, visible: false }));
       return;
     }
@@ -169,10 +190,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     const relativeY = e.clientY - rect.top + textareaRef.current.scrollTop - PADDING_TOP;
     const hoverLine = Math.floor(relativeY / LINE_HEIGHT) + 1;
 
-    if (hoverLine === syntaxError.line) {
+    if (hoverLine === errorForCurrentFile.line) {
       setErrorTooltip({
         visible: true,
-        content: syntaxError.message,
+        content: errorForCurrentFile.message,
         x: e.clientX,
         y: e.clientY
       });
@@ -231,6 +252,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <span>Línea {syntaxError.line}</span>
           </div>
         )}
+        {errorForCurrentFile && (
+        <div className="error-banner">
+          ⚠️ Error en línea {errorForCurrentFile.line}: {errorForCurrentFile.message}
+        </div>
+      )}
       </div>
 
       {/* Editor Container */}
@@ -310,6 +336,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           onScroll={handleScroll}
           className={`
             absolute outline-none resize-none
+            ${errorForCurrentFile ? 'has-error' : ''}
             ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-text'}
           `}
           style={{
@@ -350,13 +377,25 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         )}
 
         {/* Error Line Indicator */}
-        {syntaxError && (
+        {/* {syntaxError && (
           <div
             className="absolute left-0 w-1 bg-red-500 pointer-events-none"
             style={{
               top: `${(syntaxError.line - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
               height: LINE_HEIGHT,
               zIndex: 4,
+            }}
+          />
+        )} */}
+        {errorForCurrentFile && (
+          <div
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{
+              top: `${(errorForCurrentFile.line - 1) * LINE_HEIGHT + PADDING_TOP - (textareaRef.current?.scrollTop || 0)}px`,
+              height: `${LINE_HEIGHT}px`,
+              background: 'rgba(239, 68, 68, 0.15)',
+              borderLeft: '3px solid rgb(239, 68, 68)',
+              zIndex: 5,
             }}
           />
         )}

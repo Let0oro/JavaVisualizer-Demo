@@ -9,8 +9,8 @@ const server = serve({
     "/api/interpret": {
       async POST(req) {
         try {
-          const { code } = await req.json();
-          const trace = await interpretJavaCode(code);
+          const { codeToRun } = await req.json();
+          const trace = await interpretJavaCode(codeToRun);
           return Response.json({ trace });
         } catch (err) {
           return Response.json({ trace: [], error: String(err) }, { status: 400 });

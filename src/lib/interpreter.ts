@@ -282,6 +282,7 @@ export class Interpreter {
           console.log("  memberExpr.object.kind:", memberExpr.object?.kind);
           console.log("  memberExpr.property.kind:", memberExpr.property?.kind);
 
+          // ===== 1. Detectar System.out.println/print/printf =====
           if (memberExpr.object?.kind === "MemberExpr") {
             const outerMember = memberExpr.object;
             console.log("  outerMember.object.kind:", outerMember.object?.kind);
@@ -290,7 +291,6 @@ export class Interpreter {
             console.log("  outerMember.property.symbol:", outerMember.property?.symbol);
             console.log("  memberExpr.property.symbol:", memberExpr.property?.symbol);
 
-            // Detectar System.out.println/print/printf
             if (
               outerMember.object?.kind === "Identifier" &&
               outerMember.object?.symbol === "System" &&
@@ -312,7 +312,7 @@ export class Interpreter {
                   callStack: this.callStack.map(f => ({ methodName: f.methodName, line: f.line })),
                   consoleOutput: output,
                 });
-                return;
+                return; // ✅ IMPORTANTE: Return aquí
               } else if (methodName === "print") {
                 const output = args.length > 0 ? interpretEscapes(String(args[0])) : '';
                 this.trace.push({
@@ -322,7 +322,7 @@ export class Interpreter {
                   callStack: this.callStack.map(f => ({ methodName: f.methodName, line: f.line })),
                   consoleOutput: output,
                 });
-                return;
+                return; // ✅ IMPORTANTE: Return aquí
               } else if (methodName === "printf") {
                 let output = '';
                 if (args.length > 0) {
@@ -339,12 +339,70 @@ export class Interpreter {
                   callStack: this.callStack.map(f => ({ methodName: f.methodName, line: f.line })),
                   consoleOutput: output,
                 });
-                return;
+                return; // ✅ IMPORTANTE: Return aquí
               }
             }
           }
 
-          // ===== Llamadas a métodos de instancia (method calls) =====
+          // ===== 2. Detectar llamadas a métodos estáticos de clases (ClassName.methodName) =====
+          if (
+            memberExpr.object?.kind === "Identifier" &&
+            memberExpr.property?.kind === "Identifier"
+          ) {
+            const className = memberExpr.object.symbol;
+            const methodName = memberExpr.property.symbol;
+
+            // Buscar la clase en el entorno global
+            const classDef = this.globalEnv.lookup(className);
+
+            if (classDef && classDef.type === "class" && classDef.methods) {
+              const method = classDef.methods[methodName];
+
+              if (method) {
+                console.log(`✅ Calling static method ${className}.${methodName}()`);
+
+                // Evaluar argumentos
+                const args = expr.args.map((arg: any) => this.evaluate(arg));
+
+                // Crear entorno de activación para el método
+                const activationRecord = new Environment(this.globalEnv);
+                for (let i = 0; i < method.params.length; i++) {
+                  activationRecord.declare(method.params[i].name, args[i]);
+                }
+
+                // Guardar el entorno actual
+                const callerEnv = this.currentEnv;
+
+                // Actualizar call stack
+                this.callStack.push({
+                  methodName: `${className}.${method.name}`,
+                  line: method.line,
+                  env: callerEnv,
+                });
+
+                // Ejecutar el método
+                this.currentEnv = activationRecord;
+                const result = this.evaluate({
+                  kind: "BlockStatement",
+                  body: method.body,
+                  line: method.line,
+                });
+
+                // Restaurar entorno y call stack
+                this.callStack.pop();
+                this.currentEnv = callerEnv;
+
+                // Retornar resultado si hay return
+                if (result instanceof ReturnSentinel) {
+                  return result.value;
+                }
+
+                return result; // ✅ IMPORTANTE: Return aquí
+              }
+            }
+          }
+
+          // ===== 3. Llamadas a métodos de instancia (method calls) =====
           console.log("⚠️  Treating as instance method call");
           const args = expr.args.map((arg: any) => this.evaluate(arg));
           const instanceRef = this.evaluate(memberExpr.object) as HeapRef;
@@ -355,18 +413,22 @@ export class Interpreter {
 
           const instance = this.heap[instanceRef.__ref__];
           if (instance?.type !== 'object') throw new Error("Cannot call method on non-object.");
+
           const classDef = this.globalEnv.lookup(instance.className);
           const method = classDef.methods[memberExpr.property.symbol];
+
           const activationRecord = new Environment(this.globalEnv);
-          for(let i = 0; i < method.params.length; i++) {
+          for (let i = 0; i < method.params.length; i++) {
             activationRecord.declare(method.params[i].name, args[i]);
           }
+
           const callerEnv = this.currentEnv;
           this.callStack.push({ methodName: method.name, line: method.line, env: callerEnv });
           this.currentEnv = activationRecord;
           const result = this.evaluate({ kind: "BlockStatement", body: method.body, line: method.line });
           this.callStack.pop();
           this.currentEnv = callerEnv;
+
           if (result instanceof ReturnSentinel) return result.value;
           return result;
         }

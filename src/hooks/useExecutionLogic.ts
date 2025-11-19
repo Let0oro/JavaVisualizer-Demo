@@ -32,7 +32,8 @@ export function useExecutionLogic(defaultCode: string) {
     setExecutionTrace([]); setCurrentStepIndex(0); setError(null);
   }, []);
 
-  const handleExecute = useCallback(async () => {
+  const handleExecute = useCallback(async (customCode?: string) => {
+    const codeToRun = customCode ?? code;
     if (syntaxError) return;
     clearExecutionState();
     setIsLoading(true);
@@ -40,10 +41,10 @@ export function useExecutionLogic(defaultCode: string) {
       const response = await fetch("/api/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ codeToRun }),
       });
       const { trace } = await response.json();
-      if (trace.length === 0 && code.trim().length > 0) {
+      if (trace.length === 0 && codeToRun.trim().length > 0) {
         setError("Execution produced no steps. The code might be empty, have nothing to visualize, or contain unsupported syntax.");
         setIsLoading(false); return;
       }
