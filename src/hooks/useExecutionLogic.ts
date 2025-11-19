@@ -12,7 +12,7 @@ export function useExecutionLogic(defaultCode: string) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [syntaxError, setSyntaxError] = useState<{ line: number; message: string } | null>(null);
-  const [executionSpeed, setExecutionSpeed] = useState(300);
+  const [executionSpeed, setExecutionSpeed] = useState(150);
   const [visiblePanels, setVisiblePanels] = useState({
     variables: false, heap: false, callStack: false, console: true
   });
