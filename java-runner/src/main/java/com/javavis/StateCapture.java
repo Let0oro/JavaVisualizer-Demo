@@ -2,6 +2,7 @@ package com.javavis;
 
 import java.util.*;
 import java.io.*;
+import java.lang.reflect.*;
 
 public class StateCapture {
     private static final List<Map<String, Object>> trace = new ArrayList<>();
@@ -10,7 +11,8 @@ public class StateCapture {
     private static final StringBuilder consoleBuffer = new StringBuilder();
     private static PrintStream originalOut;
     private static PrintStream captureStream;
-    private static int lastCapturedLength = 0;  // ← NUEVO: track qué ya capturamos
+    private static int lastCapturedLength = 0;
+    private static final Map<String, Object> currentVariables = new LinkedHashMap<>();
     
     static {
         originalOut = System.out;
@@ -25,21 +27,24 @@ public class StateCapture {
         System.setOut(captureStream);
     }
     
+    public static void setVariable(String name, Object value) {
+        currentVariables.put(name, value);
+    }
+    
     public static void captureState(int lineNumber) {
         if (stepCount++ > MAX_STEPS) {
             throw new RuntimeException("Maximum steps exceeded");
         }
         
-        // Capturar SOLO lo nuevo desde el último paso
         String newOutput = consoleBuffer.substring(lastCapturedLength);
         lastCapturedLength = consoleBuffer.length();
         
         Map<String, Object> step = new HashMap<>();
         step.put("lineNumber", lineNumber);
-        step.put("variables", new HashMap<>());
+        step.put("variables", new LinkedHashMap<>(currentVariables));
         step.put("heap", new HashMap<>());
         step.put("callStack", captureCallStack());
-        step.put("consoleOutput", newOutput);  // ← Solo lo nuevo
+        step.put("consoleOutput", newOutput);
         
         trace.add(step);
     }
@@ -83,5 +88,6 @@ public class StateCapture {
         stepCount = 0;
         consoleBuffer.setLength(0);
         lastCapturedLength = 0;
+        currentVariables.clear();
     }
 }
