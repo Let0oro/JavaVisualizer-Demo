@@ -3,6 +3,7 @@ import { validateJavaSyntax } from "../lib";
 import type { ExecutionStep } from "../types";
 import { useChangedVariables } from "./useChangedVariables";
 import { useChangedHeapIds } from "./useChangedHeapIds";
+import { interpretCode } from "@/lib/api";
 
 export function useExecutionLogic(defaultCode: string) {
   const [code, setCode] = useState<string>(defaultCode);
@@ -32,31 +33,67 @@ export function useExecutionLogic(defaultCode: string) {
     setExecutionTrace([]); setCurrentStepIndex(0); setError(null);
   }, []);
 
-  const handleExecute = useCallback(async (customCode?: string) => {
-    const codeToRun = customCode ?? code;
-    if (syntaxError) return;
-    clearExecutionState();
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/interpret", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codeToRun }),
-      });
-      const { trace } = await response.json();
-      if (trace.length === 0 && codeToRun.trim().length > 0) {
-        setError("Execution produced no steps. The code might be empty, have nothing to visualize, or contain unsupported syntax.");
-        setIsLoading(false); return;
-      }
-      setExecutionTrace(trace);
-      setIsRunning(true);
-    } catch (e) {
-      setError(e instanceof Error ? `${e.message}` : 'Unknown error during execution.');
-      setExecutionTrace([]);
-    } finally {
-      setIsLoading(false);
+const handleRun = useCallback(async () => {
+  // Usar 'code' del estado (que ya está sincronizado con fileManager)
+  if (syntaxError) {
+    setNotification({
+      message: "❌ Fix syntax errors before running",
+      type: "error",
+    });
+    return;
+  }
+
+  clearExecutionState();
+  setIsLoading(true);
+  setNotification(null);
+
+  try {
+    // ✅ Enviar al nuevo backend Java
+    const response = await fetch("/api/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),  // ← Usa 'code' del estado
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Execution failed");
     }
-  }, [code, syntaxError, clearExecutionState]);
+
+    const { trace } = data;
+
+    if (trace.length === 0 && code.trim().length > 0) {
+      setNotification({
+        message: "⚠️ Execution produced no steps",
+        type: "info",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    setExecutionTrace(trace);
+    setCurrentStepIndex(0);
+    setIsRunning(true);
+
+    setNotification({
+      message: `✅ Execution completed: ${trace.length} steps`,
+      type: "success",
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    setNotification({
+      message: `❌ Error: ${errorMsg}`,
+      type: "error",
+    });
+    console.error("Execution error:", error);
+    setExecutionTrace([]);
+  } finally {
+    setIsLoading(false);
+  }
+}, [code, syntaxError, clearExecutionState]);
+
+
 
   const isExecutionFinished = currentStepIndex === executionTrace.length - 1 && executionTrace.length > 0;
 
@@ -126,8 +163,10 @@ export function useExecutionLogic(defaultCode: string) {
     executionSpeed, setExecutionSpeed,
     visiblePanels, setVisiblePanels,
     notification, setNotification,
-    handleExecute, handlePause, handleResume, handleNextStep, handlePrevStep, handleReset,
-    handleTogglePanel,  // ← AGREGAR ESTA LÍNEA
+    handleRun, 
+    handlePause, handleResume, 
+    handleNextStep, handlePrevStep, 
+    handleReset, handleTogglePanel,
     isExecutionStarted: executionTrace.length > 0,
     isExecutionFinished,
     consoleOutput,
