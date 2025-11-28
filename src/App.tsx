@@ -19,18 +19,9 @@ const defaultCode = `class Main {
   static void main() {
     int alto = 5;
     int ancho = 5;
-    String salida = "";
 
-    for (int i = 0; i < alto; i++) {
-      salida = "";
-      for (int j = 0; j < ancho; j++) {
-        if (j == i || j == (ancho-1-i)) {
-          salida += "*";
-        } else {
-          salida += " ";
-        }
-      }
-      System.out.println(salida);
+    for (int i = 0; i < alto; i++){
+      System.out.println(i);
     }
   }
 }`;
@@ -73,7 +64,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     const combinedCode = fileManager.getCombinedCode();
     setExecCode(combinedCode);
-    setCodeRef.current(combinedCode);
+     exec.setCode(combinedCode);
+    // setCodeRef.current(combinedCode);
   }, [fileManager.files]);
 
   // Handle adding new file with prompt
@@ -146,7 +138,7 @@ export const App: React.FC = () => {
               isExecutionFinished={exec.isExecutionFinished}
               currentStepIndex={exec.currentStepIndex}
               speed={exec.executionSpeed}
-              onExecute={() => exec.handleExecute(fileManager.getCombinedCode())}
+              onExecute={exec.handleRun}
               onPause={exec.handlePause}
               onResume={exec.handleResume}
               onNextStep={exec.handleNextStep}
