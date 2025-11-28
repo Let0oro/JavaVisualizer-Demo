@@ -20,6 +20,10 @@ serve({
             { status: 400 }
           );
         }
+        // 🔍 DEBUG: Log el código recibido
+        console.log("[DEBUG] Received code:", code);
+        console.log("[DEBUG] Code length:", code.length);
+        console.log("[DEBUG] Code hex:", Buffer.from(code).toString("hex"));
 
         // Ejecutar código Java
         const trace = await executeJavaCode(code);
@@ -27,6 +31,7 @@ serve({
         return Response.json({ trace, error: null }, { status: 200 });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[ERROR] Execution error:", errorMessage);
         return Response.json(
           { trace: [], error: errorMessage },
           { status: 500 }

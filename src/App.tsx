@@ -17,14 +17,26 @@ import { useFileManager, type JavaFile } from './hooks/useFileManager';
 
 const defaultCode = `class Main {
   static void main() {
-    int alto = 5;
-    int ancho = 5;
-
-    for (int i = 0; i < alto; i++){
-      System.out.println(i);
+    int[] numeros = new int[5];
+    numeros[0] = 10;
+    numeros[1] = 20;
+    numeros[2] = 30;
+    numeros[3] = 40;
+    numeros[4] = 50;
+    
+    String mensaje = "Hola";
+    int suma = 0;
+    
+    for (int i = 0; i < numeros.length; i++) {
+      suma += numeros[i];
+      System.out.println(mensaje + " - suma: " + suma);
     }
+    
+    int promedio = suma / numeros.length;
+    System.out.println("Promedio: " + promedio);
   }
-}`;
+}
+`;
 
 const initialFile: JavaFile = {
   id: 'main-file',
@@ -64,7 +76,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const combinedCode = fileManager.getCombinedCode();
     setExecCode(combinedCode);
-     exec.setCode(combinedCode);
+    exec.setCode(combinedCode);
     // setCodeRef.current(combinedCode);
   }, [fileManager.files]);
 
@@ -165,7 +177,7 @@ export const App: React.FC = () => {
 
             {exec.visiblePanels.heap && exec.currentStep && (
               <HeapPanel
-                heap={exec.currentStep.heap}
+                currentStep={exec.currentStep}
                 changedHeapIds={exec.changedHeapIds}
               />
             )}
